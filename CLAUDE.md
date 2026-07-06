@@ -1,0 +1,94 @@
+# foot-mate
+
+여러 축구 동호회가 함께 사용하는 **멀티테넌트 SaaS 플랫폼**. 회원 관리, 매치 일정·참석 투표, 회비 정산, 커뮤니티, 알림을 제공한다.
+
+## 기술 스택
+
+- **Next.js** (App Router 전제)
+- **Supabase** — PostgreSQL + Auth + Storage + Realtime + Edge Functions
+- **인증**: Supabase Auth + **카카오 OAuth** (주 로그인 수단, 한국 사용자 타겟)
+- **TailwindCSS**
+- **shadcn/ui** — UI 컴포넌트. 컴포넌트는 이 라이브러리로 통일한다 (Base UI(`@base-ui/react`) 기반, Tailwind + Lucide 사용, 복사-붙여넣기 방식이라 `components/ui`에 코드가 들어옴). 컴포넌트 추가는 `pnpm dlx shadcn@latest add <name>`. 폼은 shadcn `<Form>` + `zodResolver`로 작성.
+- **Lucide** (`lucide-react`) — 아이콘. 아이콘은 이 라이브러리로 통일한다.
+- **날짜**: `date-fns` (+ `ko` 로케일) + `date-fns-tz`. **날짜 표시는 항상 `Asia/Seoul`로 고정한다** — DB는 UTC(`timestamptz`) 저장, SSR 서버(Vercel)는 UTC이므로 표시할 때 KST로 변환하지 않으면 서버/클라이언트 렌더가 어긋난다.
+- **React Hook Form + Zod** — 폼 상태 + 스키마 검증. 폼은 이 조합으로 작성한다 (`@hookform/resolvers`의 `zodResolver` 사용). Zod 스키마는 클라이언트 검증과 서버(Route Handler / Server Action) 입력 검증에 **재사용**한다.
+- **pnpm** — 패키지 관리자 (npm/yarn 명령어 사용 금지, `pnpm` / `pnpm dlx` 사용)
+- **PWA + Web Push (VAPID)** — 앱 스토어 비용 없이 알림 제공. iOS는 홈 화면 추가 시에만 푸시 동작하므로 **이메일 알림을 백업**으로 둔다.
+- 배포: **Vercel**, 초기에는 전부 **무료 티어**로 운영
+
+> Supabase 무료 티어는 1주간 요청이 없으면 자동 일시정지된다 → cron 헬스체크 핑으로 우회.
+
+## 아키텍처 원칙 (가장 중요)
+
+**멀티테넌트 격리는 이 프로젝트의 뼈대다.** 모든 클럽 소속 데이터는 `club_id`를 가지며 **RLS(Row Level Security)로 격리**된다. RLS가 누락된 테이블은 anon key로 전부 뚫리므로 곧 데이터 유출이다.
+
+- **새 테이블을 만들면 반드시**: (1) RLS 활성화(`enable row level security`), (2) 조회/쓰기 policy 추가. 마이그레이션에서 RLS를 명시적으로 켠다. 프로젝트의 "자동 RLS 활성화" 이벤트 트리거는 안전망으로 켜두길 권장한다. 어느 경우든 **policy는 수동으로 추가해야 한다** — policy 없는 테이블은 전면 차단(빈 결과)된다.
+- 권한 판단은 아래 **헬퍼 함수**로만 한다. policy 안에서 `club_members`를 직접 조회하지 말 것(RLS 재귀). 함수는 `security definer`로 이를 회피한다.
+- **키 취급**: 클라이언트에는 `publishable` 키만 노출한다. `secret` 키(구 `service_role`)는 RLS를 **완전히 우회**하므로 절대 브라우저/클라이언트 번들에 넣지 말 것 — 서버(Route Handler, Server Action, Edge Function)에서만 사용. 유출 시 RLS가 무의미해진다.
+
+## 역할 & 권한
+
+역할 6종 (`member_role` enum, DB는 영문 / 프론트에서 한글 라벨 매핑):
+
+| enum | 한글 | 권한 영역 |
+|------|------|-----------|
+| `president` | 회장 | 클럽 설정·삭제 + 아래 전부 |
+| `treasurer` | 총무 | 회원 승인·역할변경, 회비/정산, 공지 |
+| `manager` | 감독 | 매치 생성·편성, 경기 결과·기록, 공지 |
+| `coach` | 코치 | 감독과 동일 (매치 영역) |
+| `member` | 회원 | 조회, 참석 투표, 자유글 |
+| `guest` | 게스트 | 초대된 매치 조회·참석 투표만 (회비·회원목록·통계 차단) |
+
+권한 헬퍼 함수 (`supabase/migrations/*_rls.sql`):
+
+- `is_club_member(club_id)` — 조회 (게스트 포함, active 회원)
+- `is_full_member(club_id)` — 민감 조회 (게스트 제외)
+- `can_manage_match(club_id)` — 매치/편성/결과/기록 → 회장·감독·코치
+- `can_manage_club(club_id)` — 회원/회비/공지 → 회장·총무
+- `is_club_owner(club_id)` — 클럽 설정/삭제 → 회장
+- `shares_club_with(user_id)` — 프로필 조회용 (같은 클럽 소속 여부)
+
+역할이 늘거나 권한이 바뀌면 이 함수들의 `in (...)` 목록만 수정한다.
+
+**회장 역할 보호** (`*_rls_hardening.sql`): `president` 역할의 부여/회수/강퇴는 **회장만** 가능하다(총무의 권한 상승 차단). 또한 트리거로 **클럽에 회장이 최소 1명** 유지된다(마지막 회장 강등/탈퇴/삭제 불가). 회장 이양은 새 회장 승격 후 본인 강등으로 가능.
+
+## 데이터베이스
+
+- 마이그레이션: `supabase/migrations/` (타임스탬프 순 실행). enum → 백본 → 도메인 → RLS 순서 의존성.
+- 컨벤션: enum/컬럼은 영문 snake_case. 한글 라벨은 프론트에서 매핑.
+- `payments` 통합 테이블: 월회비·매치비·기타를 `type`으로 구분 (정산/미납 쿼리가 여기 집중).
+- 자동 트리거: 회원가입 → `profiles` 생성, 클럽 생성 → 생성자를 `president(active)`로 등록, `club_members` 변경 시 마지막 회장 보호(`protect_last_president`).
+- INSERT 시 `created_by = auth.uid()` 강제 (`matches`, `payments`). UPDATE 정책은 `with check`로 변경 후 상태도 격리 검증(크로스-테넌트 이동 차단).
+- 주요 테이블: `profiles, clubs, club_members, matches, match_attendances, match_results, match_stats, payments, posts, comments, push_subscriptions, notifications`
+
+## Supabase 클라이언트 (`@supabase/ssr`)
+
+용도별로 3종을 구분해서 쓴다. 섞어 쓰면 세션이 깨진다.
+
+- `lib/supabase/client.ts` → `createClient()` — **클라이언트 컴포넌트**(`"use client"`)용. 동기 함수.
+- `lib/supabase/server.ts` → `await createClient()` — **서버 컴포넌트 / Route Handler / Server Action**용. `cookies()`가 async라 **반드시 await**.
+- `lib/supabase/middleware.ts` → `updateSession()` — `middleware.ts`에서 호출. 매 요청마다 세션 토큰 갱신. `createServerClient` 직후 `getUser()` 호출이 토큰을 갱신하므로 **제거하지 말 것**.
+
+보호 경로 리다이렉트 로직은 `lib/supabase/middleware.ts`의 `updateSession` 안에 추가한다.
+
+환경변수: `.env.local` (git 제외), 템플릿은 `.env.example` (커밋됨). `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Supabase 새 키 방식(`sb_publishable_...` / `sb_secret_...`)을 쓴다. `secret` 키(구 `service_role`)는 서버 전용, `NEXT_PUBLIC_` 금지.
+
+## 명령어
+
+```bash
+pnpm dev                          # 개발 서버
+pnpm install                      # 의존성 설치
+pnpm dlx supabase db push         # 마이그레이션 원격 적용 (FootMate 프로젝트 link 완료: ezvurwzfvcgxkhbntqxb)
+pnpm dlx shadcn@latest add <name> # UI 컴포넌트 추가
+```
+
+> ⚠️ `supabase init --force`는 커밋 안 된 `supabase/migrations/`를 날릴 수 있다. 마이그레이션 작업 후에는 바로 커밋할 것.
+
+## 아직 안 만든 것 (TODO)
+
+- 실제 화면/기능 (카카오 로그인, 클럽 목록·생성, 매치, 회비 등) — 현재는 스캐폴딩 + Supabase 클라이언트 배선만 완료, 기능 페이지는 미구현
+- DB 타입 생성 (`supabase gen types typescript`) → 클라이언트에 제네릭으로 물려 쿼리 타입 안전성 확보
+- 정원 초과 시 대기자 처리 + 취소 시 대기 1번 자동 승격 RPC (`join_match`) — 동시성 안전 필요
+- Web Push 발송 Edge Function (`notifications` insert → `push_subscriptions` 조회 → 전송). 발송 라이브러리 필요 (Edge Function은 Deno이므로 `web-push` npm 대신 Deno 호환 방식 또는 Next.js Node 라우트에서 발송)
+- 구장 위치 지도: 카카오맵 SDK (npm 아님, 스크립트 로드)
+- 카카오 실제 연동 후 `raw_user_meta_data` 실제 payload 확인: `handle_new_user`는 `name`→`full_name`→`nickname`→email앞부분→`'축구인'`, 사진은 `avatar_url`→`picture` fallback으로 이미 대응됨. 실제 카카오 응답 키가 다르면 이 목록만 조정
