@@ -1,9 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { Compass, LogOut, MapPin, Plus, Users } from "lucide-react";
+import { Compass, LogOut, MapPin, Plus, Search, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { roleLabel } from "@/lib/constants/roles";
+import {
+  SIDO_LIST,
+  districtsOf,
+  formatRegion,
+  parseRegion,
+  sidoOrder,
+} from "@/lib/constants/regions";
 import { Button } from "@/components/ui/button";
 
 type Club = {
@@ -46,7 +53,22 @@ const ROLE_BADGE: Record<string, string> = {
   treasurer: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
 };
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; sido?: string; gu?: string }>;
+}) {
+  const sp = await searchParams;
+  const q = (sp.q ?? "").trim();
+  // 시/도·구는 상수에 존재하는 값만 신뢰 (URL 임의값·필터 주입 방지)
+  const sidoParam = (sp.sido ?? "").trim();
+  const sido = (SIDO_LIST as readonly string[]).includes(sidoParam)
+    ? sidoParam
+    : "";
+  const guParam = (sp.gu ?? "").trim();
+  const gu = sido && districtsOf(sido).includes(guParam) ? guParam : "";
+  const hasFilter = q !== "" || sido !== "";
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -66,24 +88,69 @@ export default async function HomePage() {
     .eq("user_id", user.id)
     .eq("status", "active");
 
-  // 둘러보기: 최근 생성된 클럽
-  const { data: allClubs } = await supabase
-    .from("clubs")
-    .select("id, name, region, description")
-    .order("created_at", { ascending: false })
-    .limit(12);
-
   const myClubs = (memberships ?? []) as unknown as Array<{
     role: string;
     clubs: Club | null;
   }>;
   const myClubIds = new Set(myClubs.map((m) => m.clubs?.id));
+
+  // 지역 필터 칩: 전체 클럽(내 클럽 포함)의 지역을 시/도·구로 파싱해 노출
+  const { data: regionRows } = await supabase
+    .from("clubs")
+    .select("region")
+    .not("region", "is", null);
+  const parsedRegions = ((regionRows ?? []) as { region: string | null }[])
+    .map((r) => r.region?.trim())
+    .filter((r): r is string => !!r)
+    .map(parseRegion);
+  // 존재하는 시/도 (표준 순서)
+  const presentSido = Array.from(
+    new Set(parsedRegions.map((r) => r.sido)),
+  ).sort((a, b) => sidoOrder(a) - sidoOrder(b));
+  // 선택된 시/도에 존재하는 구 (해당 시/도 정의 순서)
+  const presentGu = sido
+    ? districtsOf(sido).filter((d) =>
+        parsedRegions.some((r) => r.sido === sido && r.gu === d),
+      )
+    : [];
+
+  // 둘러보기: 검색어(이름) + 지역 필터. 없으면 최근 생성순.
+  let clubsQuery = supabase
+    .from("clubs")
+    .select("id, name, region, description")
+    .order("created_at", { ascending: false })
+    .limit(24);
+  // ilike 값은 URL 인코딩되어 안전하게 전달됨 (필터 구문 주입 걱정 없음)
+  if (q) clubsQuery = clubsQuery.ilike("name", `%${q}%`);
+  if (sido && gu) {
+    clubsQuery = clubsQuery.eq("region", formatRegion(sido, gu));
+  } else if (sido) {
+    // "서울"(구 미지정)과 "서울 …"(구 지정) 모두 포함
+    clubsQuery = clubsQuery.ilike("region", `${sido}%`);
+  }
+  const { data: allClubs } = await clubsQuery;
+
+  // 검색·지역 필터가 걸리면 내 클럽도 포함(전체에서 검색), 기본 화면에서만 내 클럽 숨김
   const discover = ((allClubs ?? []) as Club[]).filter(
-    (c) => !myClubIds.has(c.id),
+    (c) => hasFilter || !myClubIds.has(c.id),
   );
 
   const displayName = (profile as { name?: string } | null)?.name ?? "축구인";
   const avatarUrl = (profile as { avatar_url?: string } | null)?.avatar_url;
+
+  // 검색어/시/도/구를 합쳐 둘러보기 링크 생성 (빈 값은 생략)
+  const discoverHref = (next: { q?: string; sido?: string; gu?: string }) => {
+    const params = new URLSearchParams();
+    const nq = next.q ?? q;
+    const ns = next.sido ?? sido;
+    // 시/도가 바뀌면 구는 무효 → next.sido가 오면 gu는 명시값만 사용
+    const ng = next.sido !== undefined ? (next.gu ?? "") : (next.gu ?? gu);
+    if (nq) params.set("q", nq);
+    if (ns) params.set("sido", ns);
+    if (ns && ng) params.set("gu", ng);
+    const s = params.toString();
+    return s ? `/?${s}` : "/";
+  };
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#f6f8f4] text-slate-900">
@@ -230,13 +297,101 @@ export default async function HomePage() {
 
         {/* 클럽 둘러보기 */}
         <section>
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
-            <Compass className="size-5 text-[#65a30d]" />
-            클럽 둘러보기
-          </h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 text-lg font-bold">
+              <Compass className="size-5 text-[#65a30d]" />
+              클럽 둘러보기
+            </h2>
+            {hasFilter && (
+              <Link
+                href="/"
+                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-600"
+              >
+                <X className="size-3.5" />
+                필터 초기화
+              </Link>
+            )}
+          </div>
+
+          {/* 검색 (이름) — JS 없이 동작하는 GET 폼 */}
+          <form method="get" className="relative mb-3">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder="클럽 이름 검색"
+              className="h-11 w-full rounded-2xl border border-slate-900/[0.08] bg-white/80 pl-10 pr-4 text-sm shadow-sm outline-none backdrop-blur-xl transition-colors placeholder:text-slate-400 focus:border-[#84cc16]/60 focus:ring-2 focus:ring-[#84cc16]/20"
+            />
+            {sido && <input type="hidden" name="sido" value={sido} />}
+            {sido && gu && <input type="hidden" name="gu" value={gu} />}
+          </form>
+
+          {/* 지역 필터 칩 — 1단계: 시/도 */}
+          {presentSido.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              <Link
+                href={discoverHref({ sido: "" })}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  !sido
+                    ? "border-[#84cc16]/40 bg-[#84cc16]/15 text-[#4d7c0f]"
+                    : "border-slate-900/[0.08] bg-white/70 text-slate-500 hover:bg-slate-900/5"
+                }`}
+              >
+                전체
+              </Link>
+              {presentSido.map((s) => (
+                <Link
+                  key={s}
+                  href={discoverHref({ sido: s })}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    sido === s
+                      ? "border-[#84cc16]/40 bg-[#84cc16]/15 text-[#4d7c0f]"
+                      : "border-slate-900/[0.08] bg-white/70 text-slate-500 hover:bg-slate-900/5"
+                  }`}
+                >
+                  <MapPin className="size-3" />
+                  {s}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* 지역 필터 칩 — 2단계: 구/군 (시/도 선택 시) */}
+          {sido && presentGu.length > 0 && (
+            <div className="mb-5 flex flex-wrap gap-2 border-l-2 border-[#84cc16]/30 pl-3">
+              <Link
+                href={discoverHref({ sido, gu: "" })}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  !gu
+                    ? "border-[#84cc16]/40 bg-[#84cc16]/15 text-[#4d7c0f]"
+                    : "border-slate-900/[0.08] bg-white/70 text-slate-500 hover:bg-slate-900/5"
+                }`}
+              >
+                {sido} 전체
+              </Link>
+              {presentGu.map((d) => (
+                <Link
+                  key={d}
+                  href={discoverHref({ sido, gu: d })}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    gu === d
+                      ? "border-[#84cc16]/40 bg-[#84cc16]/15 text-[#4d7c0f]"
+                      : "border-slate-900/[0.08] bg-white/70 text-slate-500 hover:bg-slate-900/5"
+                  }`}
+                >
+                  {d}
+                </Link>
+              ))}
+            </div>
+          )}
+          {!(sido && presentGu.length > 0) && <div className="mb-5" />}
+
           {discover.length === 0 ? (
             <p className="rounded-2xl border border-slate-900/[0.06] bg-white/60 px-5 py-8 text-center text-sm text-slate-400 backdrop-blur-sm">
-              둘러볼 다른 클럽이 없어요.
+              {hasFilter
+                ? "조건에 맞는 클럽이 없어요."
+                : "둘러볼 다른 클럽이 없어요."}
             </p>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2">
