@@ -128,3 +128,51 @@
     @apply font-sans;
   }
 }
+
+/* 로그인 화면 네온 로고 글로우 */
+@keyframes footmate-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes footmate-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* 배경 그라디언트 오브 완만한 이동 */
+@keyframes footmate-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(4%, -3%) scale(1.06);
+  }
+  66% {
+    transform: translate(-3%, 3%) scale(0.97);
+  }
+}
+
+/* CTA 버튼 위를 지나가는 광택 */
+@keyframes footmate-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  60%,
+  100% {
+    transform: translateX(220%);
+  }
+}
