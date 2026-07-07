@@ -123,7 +123,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system;
   }
   html {
     @apply font-sans;
@@ -176,4 +175,8 @@
   100% {
     transform: translateX(220%);
   }
+}
+
+body {
+  font-family: -apple-system;
 }
