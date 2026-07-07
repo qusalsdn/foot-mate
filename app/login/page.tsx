@@ -27,6 +27,9 @@ export default function LoginPage() {
         // 이메일(account_email)은 비즈 앱 필요 → 요청하지 않음.
         // 닉네임·프로필사진만 받는다 (카카오 콘솔 동의항목과 일치해야 함).
         scopes: "profile_nickname profile_image",
+        // prompt=login: 카카오 세션이 남아 있어도 매번 로그인 화면을 다시 띄운다.
+        // (없으면 로그아웃 후 재로그인 시 카카오 세션으로 자동 통과됨)
+        queryParams: { prompt: "login" },
       },
     });
     if (error) {
