@@ -1,65 +1,125 @@
-import Image from "next/image";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { roleLabel } from "@/lib/constants/roles";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
-export default function Home() {
+type Club = {
+  id: string;
+  name: string;
+  region: string | null;
+  description: string | null;
+};
+
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // 내가 속한 클럽 (활성 회원)
+  const { data: memberships } = await supabase
+    .from("club_members")
+    .select("role, clubs(id, name, region, description)")
+    .eq("user_id", user.id)
+    .eq("status", "active");
+
+  // 둘러보기: 최근 생성된 클럽
+  const { data: allClubs } = await supabase
+    .from("clubs")
+    .select("id, name, region, description")
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  const myClubs = (memberships ?? []) as unknown as Array<{
+    role: string;
+    clubs: Club | null;
+  }>;
+  const myClubIds = new Set(myClubs.map((m) => m.clubs?.id));
+  const discover = ((allClubs ?? []) as Club[]).filter(
+    (c) => !myClubIds.has(c.id),
+  );
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="mx-auto w-full max-w-3xl px-4 py-10">
+      <header className="mb-8 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">내 클럽</h1>
+        <div className="flex items-center gap-2">
+          <Link href="/clubs/new" className={buttonVariants()}>
+            클럽 만들기
+          </Link>
+          <form action="/auth/signout" method="post">
+            <Button type="submit" variant="outline">
+              로그아웃
+            </Button>
+          </form>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </header>
+
+      {myClubs.length === 0 ? (
+        <Card className="mb-10">
+          <CardContent className="text-muted-foreground py-10 text-center text-sm">
+            아직 소속된 클럽이 없어요. 클럽을 만들거나 아래에서 찾아보세요.
+          </CardContent>
+        </Card>
+      ) : (
+        <ul className="mb-10 grid gap-3">
+          {myClubs.map((m) =>
+            m.clubs ? (
+              <li key={m.clubs.id}>
+                <Link href={`/clubs/${m.clubs.id}`}>
+                  <Card className="transition-colors hover:bg-accent">
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between text-lg">
+                        {m.clubs.name}
+                        <span className="text-muted-foreground text-sm font-normal">
+                          {roleLabel(m.role)}
+                        </span>
+                      </CardTitle>
+                      {m.clubs.region && (
+                        <CardDescription>{m.clubs.region}</CardDescription>
+                      )}
+                    </CardHeader>
+                  </Card>
+                </Link>
+              </li>
+            ) : null,
+          )}
+        </ul>
+      )}
+
+      <h2 className="mb-4 text-lg font-medium">클럽 둘러보기</h2>
+      {discover.length === 0 ? (
+        <p className="text-muted-foreground text-sm">둘러볼 다른 클럽이 없어요.</p>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {discover.map((c) => (
+            <li key={c.id}>
+              <Link href={`/clubs/${c.id}`}>
+                <Card className="h-full transition-colors hover:bg-accent">
+                  <CardHeader>
+                    <CardTitle className="text-base">{c.name}</CardTitle>
+                    {c.region && <CardDescription>{c.region}</CardDescription>}
+                  </CardHeader>
+                  {c.description && (
+                    <CardContent className="text-muted-foreground text-sm">
+                      {c.description}
+                    </CardContent>
+                  )}
+                </Card>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

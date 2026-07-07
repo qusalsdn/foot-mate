@@ -67,11 +67,22 @@
 
 - `lib/supabase/client.ts` → `createClient()` — **클라이언트 컴포넌트**(`"use client"`)용. 동기 함수.
 - `lib/supabase/server.ts` → `await createClient()` — **서버 컴포넌트 / Route Handler / Server Action**용. `cookies()`가 async라 **반드시 await**.
-- `lib/supabase/middleware.ts` → `updateSession()` — `middleware.ts`에서 호출. 매 요청마다 세션 토큰 갱신. `createServerClient` 직후 `getUser()` 호출이 토큰을 갱신하므로 **제거하지 말 것**.
+- `lib/supabase/middleware.ts` → `updateSession()` — 루트 `proxy.ts`에서 호출. 매 요청마다 세션 토큰 갱신. `createServerClient` 직후 `getUser()` 호출이 토큰을 갱신하므로 **제거하지 말 것**.
 
-보호 경로 리다이렉트 로직은 `lib/supabase/middleware.ts`의 `updateSession` 안에 추가한다.
+Next.js 16은 `middleware.ts` 대신 **`proxy.ts`** 규칙을 쓴다(함수명도 `proxy`). 보호 경로 리다이렉트 로직은 `updateSession` 안에 있다(공개 경로: `/login`, `/auth/*`).
 
 환경변수: `.env.local` (git 제외), 템플릿은 `.env.example` (커밋됨). `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Supabase 새 키 방식(`sb_publishable_...` / `sb_secret_...`)을 쓴다. `secret` 키(구 `service_role`)는 서버 전용, `NEXT_PUBLIC_` 금지.
+
+## 라우트 / 화면
+
+- `/login` — 카카오 로그인 (공개). `signInWithOAuth('kakao')`.
+- `/auth/callback` — OAuth 코드 → 세션 교환 후 리다이렉트.
+- `/auth/signout` — POST, 로그아웃.
+- `/` — 홈. 내 클럽 목록 + 클럽 둘러보기. 미로그인 시 `/login`.
+- `/clubs/new` — 클럽 생성 (RHF+Zod, Server Action `createClub`). 생성자는 트리거로 회장 등록.
+- `/clubs/[id]` — 클럽 상세 + 가입 신청(`joinClub`, pending).
+
+폼 패턴: `components/ui/form.tsx`(Base UI 셋업에 맞춰 직접 작성, Radix Slot 없이 `cloneElement` 사용) + `zodResolver`. 스키마는 `lib/schemas/`에 두고 클라이언트·서버 액션이 공유. 역할 한글 라벨은 `lib/constants/roles.ts`.
 
 ## 명령어
 

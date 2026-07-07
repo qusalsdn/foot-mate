@@ -36,9 +36,24 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 비로그인 사용자를 보호된 경로에서 로그인으로 보내는 로직은 여기에 추가.
-  // 예: if (!user && !request.nextUrl.pathname.startsWith("/login")) { ... }
-  void user;
+  // 공개 경로: 로그인 페이지와 인증 콜백. 그 외에는 로그인 필요.
+  const { pathname } = request.nextUrl;
+  const isPublic =
+    pathname.startsWith("/login") || pathname.startsWith("/auth");
+
+  // 미로그인 → 보호 경로 접근 시 로그인으로
+  if (!user && !isPublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // 로그인 상태 → 로그인 페이지 접근 시 홈으로
+  if (user && pathname.startsWith("/login")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }
