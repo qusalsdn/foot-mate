@@ -88,9 +88,7 @@ export default function LoginPage() {
           </div>
 
           {/* 워드마크 */}
-          <h1 className="text-[2rem] font-bold leading-none tracking-tight text-slate-900">
-            foot<span className="text-[#65a30d]">-</span>mate
-          </h1>
+          <h1 className="text-[2rem] font-bold leading-none tracking-tight text-slate-900">Foot Mate</h1>
           <p className="mt-3 text-center text-sm leading-relaxed text-slate-500">
             우리 축구 동호회를 한곳에서.
             <br />
@@ -146,9 +144,7 @@ export default function LoginPage() {
       </div>
 
       {/* 하단 브랜딩 */}
-      <p className="relative mt-8 text-center text-xs font-medium tracking-wide text-slate-400">
-        동호회 운영, 이제 앱 하나로.
-      </p>
+      <p className="relative mt-8 text-center text-xs font-medium tracking-wide text-slate-400">동호회 운영, 이제 앱 하나로.</p>
     </div>
   );
 }

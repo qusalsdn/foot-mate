@@ -38,6 +38,27 @@ export async function savePushSubscription(
   return {};
 }
 
+/**
+ * 이 기기(endpoint)를 '현재 로그인 계정'이 구독하고 있는지.
+ * 토글 on/off 는 브라우저 구독 유무가 아니라 이 값(계정 기준)으로 정한다 —
+ * 다른 계정이 구독해 둔 기기라도 현재 계정 기준으론 '꺼짐'이어야 하기 때문.
+ */
+export async function isPushSubscribed(endpoint: string): Promise<boolean> {
+  if (!endpoint) return false;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from("push_subscriptions")
+    .select("id")
+    .eq("endpoint", endpoint)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  return !!data;
+}
+
 /** 푸시 구독 해제 — 해당 기기의 endpoint 행 삭제. */
 export async function deletePushSubscription(
   endpoint: string,
