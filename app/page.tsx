@@ -279,22 +279,28 @@ export default async function HomePage({
             </span>
           </Link>
           <div className="flex items-center gap-2">
-            {avatarUrl ? (
-              // 카카오 CDN 호스트가 유동적이라 next/image 대신 일반 img 사용
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                width={36}
-                height={36}
-                referrerPolicy="no-referrer"
-                className="size-9 rounded-full object-cover ring-1 ring-slate-900/10"
-              />
-            ) : (
-              <span className="flex size-9 items-center justify-center rounded-full bg-[#84cc16]/15 text-sm font-bold text-[#4d7c0f]">
-                {displayName.charAt(0)}
-              </span>
-            )}
+            <Link
+              href="/me"
+              title="내 프로필"
+              className="rounded-full outline-none transition-transform hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#84cc16]/50"
+            >
+              {avatarUrl ? (
+                // 카카오/Storage CDN 호스트가 유동적이라 next/image 대신 일반 img 사용
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  width={36}
+                  height={36}
+                  referrerPolicy="no-referrer"
+                  className="size-9 rounded-full object-cover ring-1 ring-slate-900/10"
+                />
+              ) : (
+                <span className="flex size-9 items-center justify-center rounded-full bg-[#84cc16]/15 text-sm font-bold text-[#4d7c0f]">
+                  {displayName.charAt(0)}
+                </span>
+              )}
+            </Link>
             <form action="/auth/signout" method="post">
               <Button
                 type="submit"
