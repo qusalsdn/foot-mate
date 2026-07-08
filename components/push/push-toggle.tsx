@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, BellOff, Loader2 } from "lucide-react";
 import {
   deletePushSubscription,
+  isPushSubscribed,
   savePushSubscription,
 } from "@/app/me/push-actions";
 
@@ -46,7 +47,10 @@ export function PushToggle() {
       }
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      setState(sub ? "on" : "off");
+      // on/off 는 '현재 계정'이 이 기기를 구독 중인지로 판단(브라우저 구독 유무 아님).
+      // 다른 계정이 구독해 둔 기기라면 현재 계정 기준으론 '꺼짐'.
+      const mine = sub ? await isPushSubscribed(sub.endpoint) : false;
+      setState(mine ? "on" : "off");
     })();
   }, []);
 

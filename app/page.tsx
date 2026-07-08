@@ -1,13 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { CalendarDays, ChevronRight, Clock, Compass, LogOut, MapPin, Plus, Search, Users, X } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock, Compass, MapPin, Plus, Search, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { roleLabel } from "@/lib/constants/roles";
 import { formatKstDate, formatKstTime } from "@/lib/date";
 import { SIDO_LIST, districtsOf, formatRegion, parseRegion, sidoOrder } from "@/lib/constants/regions";
-import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
+import { SignOutButton } from "@/components/sign-out-button";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 
 type Club = {
   id: string;
@@ -253,19 +254,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                 </span>
               )}
             </Link>
-            <form action="/auth/signout" method="post">
-              <Button
-                type="submit"
-                variant="ghost"
-                size="icon"
-                title="로그아웃"
-                className="size-9 rounded-full text-slate-400 hover:bg-slate-900/5 hover:text-slate-700"
-              >
-                <LogOut className="size-4" />
-              </Button>
-            </form>
+            <SignOutButton />
           </div>
         </header>
+
+        {/* PWA 설치 유도 (안드로이드/데스크톱 버튼 · iOS 안내) */}
+        <InstallPrompt />
 
         {/* 인사말 */}
         <div className="mb-8">

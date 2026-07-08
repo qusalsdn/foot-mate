@@ -28,7 +28,7 @@ function configure() {
 export async function sendPushToUser(
   userId: string,
   payload: PushPayload,
-): Promise<{ sent: number }> {
+): Promise<{ sent: number; failed: number; subscriptions: number }> {
   configure();
   const supabase = createAdminClient();
 
@@ -36,11 +36,15 @@ export async function sendPushToUser(
     .from("push_subscriptions")
     .select("endpoint, p256dh, auth")
     .eq("user_id", userId);
-  if (!subs || subs.length === 0) return { sent: 0 };
+  if (!subs || subs.length === 0) {
+    console.warn("[push] 구독 없음", { userId });
+    return { sent: 0, failed: 0, subscriptions: 0 };
+  }
 
   const body = JSON.stringify(payload);
   const expired: string[] = [];
   let sent = 0;
+  let failed = 0;
 
   await Promise.all(
     (subs as { endpoint: string; p256dh: string; auth: string }[]).map(
@@ -52,9 +56,18 @@ export async function sendPushToUser(
           );
           sent++;
         } catch (err) {
-          const status = (err as { statusCode?: number })?.statusCode;
+          failed++;
+          const e = err as { statusCode?: number; body?: string };
+          // 발송 실패 원인을 로그로 남긴다 (VAPID 불일치=403, 형식 오류 등)
+          console.error("[push] 발송 실패", {
+            statusCode: e?.statusCode,
+            body: e?.body,
+            endpoint: s.endpoint.slice(0, 40),
+          });
           // 구독 만료/삭제 → 정리 대상
-          if (status === 404 || status === 410) expired.push(s.endpoint);
+          if (e?.statusCode === 404 || e?.statusCode === 410) {
+            expired.push(s.endpoint);
+          }
         }
       },
     ),
@@ -63,5 +76,5 @@ export async function sendPushToUser(
   if (expired.length > 0) {
     await supabase.from("push_subscriptions").delete().in("endpoint", expired);
   }
-  return { sent };
+  return { sent, failed, subscriptions: subs.length };
 }
