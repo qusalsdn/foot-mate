@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  ArrowLeft,
   CalendarDays,
   CalendarPlus,
   ChevronRight,
@@ -13,6 +12,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { formatKstDate, formatKstTime, kstYearMonth } from "@/lib/date";
 import { getMatchView, matchTypeLabel } from "@/lib/constants/matches";
+import { PageBackBar } from "@/components/page-back-bar";
 
 type MatchRow = {
   id: string;
@@ -203,13 +203,7 @@ export default async function MatchListPage({
       />
 
       <div className="relative mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
-        <Link
-          href={`/clubs/${id}`}
-          className="group mb-6 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-900/5 hover:text-slate-800"
-        >
-          <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-          {club.name}
-        </Link>
+        <PageBackBar href={`/clubs/${id}`} label={club.name} userId={user.id} />
 
         <div className="mb-7 flex items-end justify-between gap-3">
           <div>

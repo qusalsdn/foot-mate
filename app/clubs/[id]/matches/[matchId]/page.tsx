@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  ArrowLeft,
   Ban,
   CalendarDays,
   Clock,
@@ -17,6 +16,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { formatKstDate, formatKstTime } from "@/lib/date";
 import { getMatchView, matchTypeLabel } from "@/lib/constants/matches";
+import { PageBackBar } from "@/components/page-back-bar";
 import { AttendancePanel } from "./attendance-panel";
 import { ResultEditor, type EditablePlayer } from "./result-editor";
 import { MatchManage } from "./match-manage";
@@ -266,13 +266,11 @@ export default async function MatchDetailPage({
       />
 
       <div className="relative mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
-        <Link
+        <PageBackBar
           href={`/clubs/${id}/matches`}
-          className="group mb-6 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-900/5 hover:text-slate-800"
-        >
-          <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-          매치 목록
-        </Link>
+          label="매치 목록"
+          userId={user.id}
+        />
 
         {errorParam === "delete" && (
           <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm font-medium text-red-600">

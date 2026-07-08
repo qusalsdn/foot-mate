@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, UserCog } from "lucide-react";
+import { UserCog } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "./profile-form";
+import { PageBackBar } from "@/components/page-back-bar";
+import { PushToggle } from "@/components/push/push-toggle";
 
 export default async function MyProfilePage() {
   const supabase = await createClient();
@@ -46,13 +47,7 @@ export default async function MyProfilePage() {
       />
 
       <div className="relative w-full max-w-lg">
-        <Link
-          href="/"
-          className="group mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
-        >
-          <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-          홈으로
-        </Link>
+        <PageBackBar href="/" label="홈으로" userId={user.id} />
 
         {/* 카드 */}
         <div className="relative overflow-hidden rounded-3xl border border-slate-900/[0.06] bg-white/80 p-7 shadow-[0_20px_60px_-15px_rgba(15,23,42,0.2)] backdrop-blur-xl sm:p-9">
@@ -82,6 +77,12 @@ export default async function MyProfilePage() {
             initialPhone={p.phone ?? ""}
             initialAvatarUrl={p.avatar_url ?? null}
           />
+        </div>
+
+        {/* 알림 설정 */}
+        <div className="mt-5">
+          <h2 className="mb-3 px-1 text-sm font-bold text-slate-700">알림</h2>
+          <PushToggle />
         </div>
       </div>
     </div>
