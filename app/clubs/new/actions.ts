@@ -37,6 +37,18 @@ export async function createClub(values: unknown): Promise<CreateClubResult> {
     .single();
 
   if (error) {
+    // 스팸 방지 트리거(enforce_club_create_rate_limit)가 던진 예외는
+    // message에 영문 코드가 들어오므로 사용자용 문구(hint)로 매핑한다.
+    if (
+      error.message === "club_create_rate_limit" ||
+      error.message === "club_create_cooldown"
+    ) {
+      return {
+        error:
+          error.hint ??
+          "클럽을 잠시 후 다시 생성해주세요. (짧은 시간에 너무 많이 만들었습니다)",
+      };
+    }
     return { error: error.message };
   }
 
