@@ -27,6 +27,20 @@ export function formatKstTime(value: string | Date): string {
 }
 
 /**
+ * UTC ISO → KST 기준 연/월. 지난 매치 연·월 그룹핑 키용.
+ * 문자열 slice로 뽑으면 UTC 기준이라 자정 근처 매치가 옆 달로 새므로 반드시 이걸 쓴다.
+ */
+export function kstYearMonth(value: string | Date): {
+  year: number;
+  month: number;
+} {
+  return {
+    year: Number(formatInTimeZone(value, KST, "yyyy")),
+    month: Number(formatInTimeZone(value, KST, "M")),
+  };
+}
+
+/**
  * datetime-local 입력값(KST 벽시계, 예: "2026-07-10T19:30") → 저장용 UTC ISO.
  * 브라우저 datetime-local은 타임존 없는 벽시계라 KST로 해석해 UTC로 변환한다.
  */

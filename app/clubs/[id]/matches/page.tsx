@@ -4,13 +4,14 @@ import {
   ArrowLeft,
   CalendarDays,
   CalendarPlus,
+  ChevronRight,
   Clock,
   MapPin,
   Swords,
   Users,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { formatKstDate, formatKstTime } from "@/lib/date";
+import { formatKstDate, formatKstTime, kstYearMonth } from "@/lib/date";
 import { getMatchView, matchTypeLabel } from "@/lib/constants/matches";
 
 type MatchRow = {
@@ -166,6 +167,25 @@ export default async function MatchListPage({
     return key !== "recruiting" && key !== "closed";
   });
 
+  // 지난 매치를 KST 기준 연 → 월로 그룹핑 (past는 이미 최근순 정렬이라 순서 보존).
+  type MonthGroup = { month: number; matches: MatchRow[] };
+  type YearGroup = { year: number; months: MonthGroup[] };
+  const pastByYear: YearGroup[] = [];
+  for (const m of past) {
+    const { year, month } = kstYearMonth(m.match_date);
+    let yg = pastByYear[pastByYear.length - 1];
+    if (!yg || yg.year !== year) {
+      yg = { year, months: [] };
+      pastByYear.push(yg);
+    }
+    let mg = yg.months[yg.months.length - 1];
+    if (!mg || mg.month !== month) {
+      mg = { month, matches: [] };
+      yg.months.push(mg);
+    }
+    mg.matches.push(m);
+  }
+
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#f6f8f4] text-slate-900">
       {/* 배경 장식 */}
@@ -204,7 +224,7 @@ export default async function MatchListPage({
           {canManage && (
             <Link
               href={`/clubs/${id}/matches/new`}
-              className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#84cc16] px-3.5 py-2 text-sm font-semibold text-[#1a2e05] shadow-md shadow-[#84cc16]/30 transition-all hover:-translate-y-0.5 hover:bg-[#77b514]"
+              className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-br from-[#bef264] to-[#84cc16] px-3.5 py-2 text-sm font-semibold text-[#1a2e05] shadow-lg shadow-[#a3e635]/40 ring-1 ring-inset ring-white/50 transition-all hover:-translate-y-0.5 hover:from-[#d9f99d] hover:to-[#a3e635] hover:shadow-[#a3e635]/50"
             >
               <CalendarPlus className="size-4" />
               매치 만들기
@@ -257,17 +277,45 @@ export default async function MatchListPage({
                     {past.length}
                   </span>
                 </h2>
-                <ul className="grid gap-3 opacity-90">
-                  {past.map((m) => (
-                    <MatchCard
-                      key={m.id}
-                      m={m}
-                      count={attendCount.get(m.id) ?? 0}
-                      clubId={id}
-                      now={now}
-                    />
+                <div className="space-y-5">
+                  {pastByYear.map((yg, yi) => (
+                    <div key={yg.year}>
+                      <h3 className="mb-2 px-1 text-xs font-bold uppercase tracking-wide text-slate-400">
+                        {yg.year}년
+                      </h3>
+                      <div className="space-y-1.5">
+                        {yg.months.map((mg, mi) => (
+                          <details
+                            key={mg.month}
+                            open={yi === 0 && mi === 0}
+                            className="group/m"
+                          >
+                            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-slate-900/[0.03] [&::-webkit-details-marker]:hidden">
+                              <ChevronRight className="size-4 shrink-0 text-slate-400 transition-transform group-open/m:rotate-90" />
+                              <span className="text-sm font-semibold text-slate-600">
+                                {mg.month}월
+                              </span>
+                              <span className="rounded-full bg-slate-900/[0.06] px-2 py-0.5 text-xs font-semibold text-slate-500">
+                                {mg.matches.length}
+                              </span>
+                            </summary>
+                            <ul className="mt-2 grid gap-3 pl-1 opacity-90">
+                              {mg.matches.map((m) => (
+                                <MatchCard
+                                  key={m.id}
+                                  m={m}
+                                  count={attendCount.get(m.id) ?? 0}
+                                  clubId={id}
+                                  now={now}
+                                />
+                              ))}
+                            </ul>
+                          </details>
+                        ))}
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </section>
             )}
           </div>
