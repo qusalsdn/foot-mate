@@ -1,3 +1,4 @@
+import { formatDistanceToNow } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { ko } from "date-fns/locale";
 
@@ -51,4 +52,12 @@ export function kstInputToUtcIso(local: string): string {
 /** UTC ISO → datetime-local 입력값(KST 벽시계) — 수정 폼 기본값용 */
 export function utcIsoToKstInput(value: string | Date): string {
   return formatInTimeZone(value, KST, "yyyy-MM-dd'T'HH:mm");
+}
+
+/**
+ * 상대 시각 "3분 전", "약 1시간 전" — 알림 목록 등 최신성 표시용.
+ * 시각 차이(delta)라 타임존과 무관하다. 렌더 시점 기준이라 동적 페이지에서만 사용.
+ */
+export function formatRelative(value: string | Date): string {
+  return formatDistanceToNow(new Date(value), { addSuffix: true, locale: ko });
 }

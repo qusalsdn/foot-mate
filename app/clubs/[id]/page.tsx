@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  ArrowLeft,
   ArrowRight,
   CalendarDays,
   MapPin,
@@ -17,6 +16,7 @@ import { DeleteClubButton } from "./delete-club-button";
 import { PendingRequests, type PendingMember } from "./pending-requests";
 import { MemberManager, type RosterMember } from "./member-manager";
 import { Button } from "@/components/ui/button";
+import { PageBackBar } from "@/components/page-back-bar";
 
 // 클럽 이름 → 안정적인 파스텔 그라디언트 (id 해시 기반) — 홈 화면과 동일 팔레트
 const AVATAR_GRADIENTS = [
@@ -56,9 +56,8 @@ type RosterRow = {
   profiles: { name: string | null; avatar_url: string | null } | null;
 };
 
-// 곧 추가될 기능 미리보기 타일 (매치는 구현 완료 → 별도 진입 카드로 노출)
+// 곧 추가될 기능 미리보기 타일 (매치·회비는 구현 완료 → 별도 진입 카드로 노출)
 const FEATURES = [
-  { icon: Wallet, label: "회비", desc: "정산·미납 관리" },
   { icon: MessageSquare, label: "커뮤니티", desc: "게시판·댓글" },
 ];
 
@@ -159,14 +158,8 @@ export default async function ClubDetailPage({
       />
 
       <div className="relative mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
-        {/* 뒤로가기 */}
-        <Link
-          href="/"
-          className="group mb-6 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-900/5 hover:text-slate-800"
-        >
-          <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-          홈으로
-        </Link>
+        {/* 뒤로가기 + 알림 */}
+        <PageBackBar href="/" label="홈으로" userId={user.id} />
 
         {errorParam === "delete" && (
           <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm font-medium text-red-600">
@@ -278,6 +271,25 @@ export default async function ClubDetailPage({
               <p className="text-sm font-semibold text-slate-800">매치</p>
               <p className="truncate text-xs text-slate-400">
                 일정 확인 · 참석 투표 · 경기 결과
+              </p>
+            </div>
+            <ArrowRight className="size-5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#65a30d]" />
+          </Link>
+        )}
+
+        {/* 회비 진입 (정회원 — 게스트 제외, RLS도 차단) */}
+        {isFullMember && (
+          <Link
+            href={`/clubs/${club.id}/finance`}
+            className="group mt-3 flex items-center gap-4 overflow-hidden rounded-2xl border border-slate-900/[0.06] bg-white/80 p-4 shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-[#84cc16]/40 hover:shadow-lg hover:shadow-[#84cc16]/10 sm:p-5"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#84cc16]/12 text-[#4d7c0f]">
+              <Wallet className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-800">회비</p>
+              <p className="truncate text-xs text-slate-400">
+                {canManage ? "월회비 부과 · 정산 · 미납 관리" : "내 납부 내역 확인"}
               </p>
             </div>
             <ArrowRight className="size-5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#65a30d]" />

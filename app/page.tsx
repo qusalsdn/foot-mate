@@ -1,29 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import {
-  CalendarDays,
-  ChevronRight,
-  Clock,
-  Compass,
-  LogOut,
-  MapPin,
-  Plus,
-  Search,
-  Users,
-  X,
-} from "lucide-react";
+import { CalendarDays, ChevronRight, Clock, Compass, LogOut, MapPin, Plus, Search, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { roleLabel } from "@/lib/constants/roles";
 import { formatKstDate, formatKstTime } from "@/lib/date";
-import {
-  SIDO_LIST,
-  districtsOf,
-  formatRegion,
-  parseRegion,
-  sidoOrder,
-} from "@/lib/constants/regions";
+import { SIDO_LIST, districtsOf, formatRegion, parseRegion, sidoOrder } from "@/lib/constants/regions";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/notification-bell";
 
 type Club = {
   id: string;
@@ -94,27 +78,15 @@ function VoteBadge({ vote }: { vote?: MyVote }) {
     label = "불참";
     cls = "border-red-500/25 bg-red-500/[0.08] text-red-500";
   }
-  return (
-    <span
-      className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${cls}`}
-    >
-      {label}
-    </span>
-  );
+  return <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${cls}`}>{label}</span>;
 }
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; sido?: string; gu?: string }>;
-}) {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ q?: string; sido?: string; gu?: string }> }) {
   const sp = await searchParams;
   const q = (sp.q ?? "").trim();
   // 시/도·구는 상수에 존재하는 값만 신뢰 (URL 임의값·필터 주입 방지)
   const sidoParam = (sp.sido ?? "").trim();
-  const sido = (SIDO_LIST as readonly string[]).includes(sidoParam)
-    ? sidoParam
-    : "";
+  const sido = (SIDO_LIST as readonly string[]).includes(sidoParam) ? sidoParam : "";
   const guParam = (sp.gu ?? "").trim();
   const gu = sido && districtsOf(sido).includes(guParam) ? guParam : "";
   const hasFilter = q !== "" || sido !== "";
@@ -125,11 +97,7 @@ export default async function HomePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("name, avatar_url")
-    .eq("id", user.id)
-    .single();
+  const { data: profile } = await supabase.from("profiles").select("name, avatar_url").eq("id", user.id).single();
 
   // 내가 속한 클럽 (활성 회원)
   const { data: memberships } = await supabase
@@ -145,12 +113,8 @@ export default async function HomePage({
   const myClubIds = new Set(myClubs.map((m) => m.clubs?.id));
 
   // 다가오는 매치: 내가 속한 모든 클럽의 예정(모집중·마감) & 미래 경기, 가까운 순 4개
-  const activeClubIds = myClubs
-    .map((m) => m.clubs?.id)
-    .filter((v): v is string => !!v);
-  const clubNameById = new Map(
-    myClubs.map((m) => [m.clubs?.id, m.clubs?.name] as const),
-  );
+  const activeClubIds = myClubs.map((m) => m.clubs?.id).filter((v): v is string => !!v);
+  const clubNameById = new Map(myClubs.map((m) => [m.clubs?.id, m.clubs?.name] as const));
   let upcomingMatches: UpcomingMatch[] = [];
   const myVotes = new Map<string, MyVote>();
   if (activeClubIds.length > 0) {
@@ -188,24 +152,15 @@ export default async function HomePage({
   }
 
   // 지역 필터 칩: 전체 클럽(내 클럽 포함)의 지역을 시/도·구로 파싱해 노출
-  const { data: regionRows } = await supabase
-    .from("clubs")
-    .select("region")
-    .not("region", "is", null);
+  const { data: regionRows } = await supabase.from("clubs").select("region").not("region", "is", null);
   const parsedRegions = ((regionRows ?? []) as { region: string | null }[])
     .map((r) => r.region?.trim())
     .filter((r): r is string => !!r)
     .map(parseRegion);
   // 존재하는 시/도 (표준 순서)
-  const presentSido = Array.from(
-    new Set(parsedRegions.map((r) => r.sido)),
-  ).sort((a, b) => sidoOrder(a) - sidoOrder(b));
+  const presentSido = Array.from(new Set(parsedRegions.map((r) => r.sido))).sort((a, b) => sidoOrder(a) - sidoOrder(b));
   // 선택된 시/도에 존재하는 구 (해당 시/도 정의 순서)
-  const presentGu = sido
-    ? districtsOf(sido).filter((d) =>
-        parsedRegions.some((r) => r.sido === sido && r.gu === d),
-      )
-    : [];
+  const presentGu = sido ? districtsOf(sido).filter((d) => parsedRegions.some((r) => r.sido === sido && r.gu === d)) : [];
 
   // 둘러보기: 검색어(이름) + 지역 필터. 없으면 최근 생성순.
   let clubsQuery = supabase
@@ -224,9 +179,7 @@ export default async function HomePage({
   const { data: allClubs } = await clubsQuery;
 
   // 검색·지역 필터가 걸리면 내 클럽도 포함(전체에서 검색), 기본 화면에서만 내 클럽 숨김
-  const discover = ((allClubs ?? []) as Club[]).filter(
-    (c) => hasFilter || !myClubIds.has(c.id),
-  );
+  const discover = ((allClubs ?? []) as Club[]).filter((c) => hasFilter || !myClubIds.has(c.id));
 
   const displayName = (profile as { name?: string } | null)?.name ?? "축구인";
   const avatarUrl = (profile as { avatar_url?: string } | null)?.avatar_url;
@@ -274,11 +227,10 @@ export default async function HomePage({
               priority
               className="rounded-xl shadow-sm ring-1 ring-slate-900/10"
             />
-            <span className="text-lg font-bold tracking-tight">
-              foot<span className="text-[#65a30d]">-</span>mate
-            </span>
+            <span className="text-lg font-bold tracking-tight">Foot Mate</span>
           </Link>
           <div className="flex items-center gap-2">
+            <NotificationBell userId={user.id} />
             <Link
               href="/me"
               title="내 프로필"
@@ -333,21 +285,14 @@ export default async function HomePage({
             <ul className="grid gap-3">
               {upcomingMatches.map((m) => (
                 <li key={m.id}>
-                  <Link
-                    href={`/clubs/${m.club_id}/matches/${m.id}`}
-                    className="group block"
-                  >
+                  <Link href={`/clubs/${m.club_id}/matches/${m.id}`} className="group block">
                     <div className="flex items-center gap-3.5 rounded-2xl border border-slate-900/[0.06] bg-white/80 p-3.5 shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-[#84cc16]/40 hover:shadow-lg hover:shadow-[#84cc16]/10 sm:p-4">
                       <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#84cc16]/12 text-[#4d7c0f]">
                         <CalendarDays className="size-5" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-slate-400">
-                          {clubNameById.get(m.club_id) ?? "내 클럽"}
-                        </p>
-                        <p className="truncate text-sm font-semibold text-slate-900">
-                          {m.title}
-                        </p>
+                        <p className="truncate text-xs font-medium text-slate-400">{clubNameById.get(m.club_id) ?? "내 클럽"}</p>
+                        <p className="truncate text-sm font-semibold text-slate-900">{m.title}</p>
                         <p className="mt-0.5 flex items-center gap-x-3 text-xs text-slate-500">
                           <span className="inline-flex items-center gap-1">
                             <CalendarDays className="size-3" />
@@ -373,8 +318,7 @@ export default async function HomePage({
         <section className="mb-10">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-bold">
-              <Users className="size-5 text-[#65a30d]" />
-              내 클럽
+              <Users className="size-5 text-[#65a30d]" />내 클럽
               {myClubs.length > 0 && (
                 <span className="rounded-full bg-slate-900/[0.06] px-2 py-0.5 text-xs font-semibold text-slate-500">
                   {myClubs.length}
@@ -395,12 +339,8 @@ export default async function HomePage({
               <span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#84cc16]/12 text-[#4d7c0f]">
                 <Users className="size-7" />
               </span>
-              <p className="mt-4 text-sm font-medium text-slate-600">
-                아직 소속된 클럽이 없어요
-              </p>
-              <p className="mt-1 text-sm text-slate-400">
-                클럽을 만들거나 아래에서 찾아보세요.
-              </p>
+              <p className="mt-4 text-sm font-medium text-slate-600">아직 소속된 클럽이 없어요</p>
+              <p className="mt-1 text-sm text-slate-400">클럽을 만들거나 아래에서 찾아보세요.</p>
             </div>
           ) : (
             <ul className="grid gap-3">
@@ -412,13 +352,10 @@ export default async function HomePage({
                         <ClubAvatar id={m.clubs.id} name={m.clubs.name} size="lg" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="truncate text-base font-semibold">
-                              {m.clubs.name}
-                            </h3>
+                            <h3 className="truncate text-base font-semibold">{m.clubs.name}</h3>
                             <span
                               className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                                ROLE_BADGE[m.role] ??
-                                "border-slate-900/10 bg-slate-900/[0.04] text-slate-500"
+                                ROLE_BADGE[m.role] ?? "border-slate-900/10 bg-slate-900/[0.04] text-slate-500"
                               }`}
                             >
                               {roleLabel(m.role)}
@@ -534,9 +471,7 @@ export default async function HomePage({
 
           {discover.length === 0 ? (
             <p className="rounded-2xl border border-slate-900/[0.06] bg-white/60 px-5 py-8 text-center text-sm text-slate-400 backdrop-blur-sm">
-              {hasFilter
-                ? "조건에 맞는 클럽이 없어요."
-                : "둘러볼 다른 클럽이 없어요."}
+              {hasFilter ? "조건에 맞는 클럽이 없어요." : "둘러볼 다른 클럽이 없어요."}
             </p>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2">
@@ -556,11 +491,7 @@ export default async function HomePage({
                           )}
                         </div>
                       </div>
-                      {c.description && (
-                        <p className="mt-3 line-clamp-2 text-sm text-slate-500">
-                          {c.description}
-                        </p>
-                      )}
+                      {c.description && <p className="mt-3 line-clamp-2 text-sm text-slate-500">{c.description}</p>}
                     </div>
                   </Link>
                 </li>

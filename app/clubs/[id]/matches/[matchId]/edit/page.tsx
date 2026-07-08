@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { utcIsoToKstInput } from "@/lib/date";
 import { MatchForm, type MatchFormValues } from "../../match-form";
+import { PageBackBar } from "@/components/page-back-bar";
 
 const MANAGER_ROLES = new Set(["president", "treasurer", "manager", "coach"]);
 
@@ -68,13 +68,11 @@ export default async function EditMatchPage({
       />
 
       <div className="relative mx-auto w-full max-w-lg px-4 py-8 sm:py-10">
-        <Link
+        <PageBackBar
           href={`/clubs/${id}/matches/${matchId}`}
-          className="group mb-6 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-900/5 hover:text-slate-800"
-        >
-          <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
-          매치로 돌아가기
-        </Link>
+          label="매치로 돌아가기"
+          userId={user.id}
+        />
 
         <div className="mb-7">
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
