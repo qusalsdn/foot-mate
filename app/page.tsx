@@ -8,6 +8,7 @@ import { formatKstDate, formatKstTime } from "@/lib/date";
 import { SIDO_LIST, districtsOf, formatRegion, parseRegion, sidoOrder } from "@/lib/constants/regions";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 
 type Club = {
   id: string;
@@ -266,6 +267,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             </form>
           </div>
         </header>
+
+        {/* PWA 설치 유도 (안드로이드/데스크톱 버튼 · iOS 안내) */}
+        <InstallPrompt />
 
         {/* 인사말 */}
         <div className="mb-8">
