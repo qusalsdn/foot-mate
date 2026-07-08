@@ -36,10 +36,13 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 공개 경로: 로그인 페이지와 인증 콜백. 그 외에는 로그인 필요.
+  // 공개 경로: 로그인 페이지·인증 콜백, 그리고 푸시 발송 라우트(외부 웹훅이 세션 없이 호출 —
+  // 자체 시크릿으로 보호됨). 그 외에는 로그인 필요.
   const { pathname } = request.nextUrl;
   const isPublic =
-    pathname.startsWith("/login") || pathname.startsWith("/auth");
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/api/push");
 
   // 미로그인 → 보호 경로 접근 시 로그인으로
   if (!user && !isPublic) {
