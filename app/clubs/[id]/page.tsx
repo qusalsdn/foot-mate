@@ -11,9 +11,11 @@ import {
   Wallet,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { roleLabel } from "@/lib/constants/roles";
+import { roleLabel, groupRoster } from "@/lib/constants/roles";
 import { joinClub } from "./actions";
 import { DeleteClubButton } from "./delete-club-button";
+import { PendingRequests, type PendingMember } from "./pending-requests";
+import { MemberManager, type RosterMember } from "./member-manager";
 import { Button } from "@/components/ui/button";
 
 // 클럽 이름 → 안정적인 파스텔 그라디언트 (id 해시 기반) — 홈 화면과 동일 팔레트
@@ -93,6 +95,10 @@ export default async function ClubDetailPage({
   const isPending = membership?.status === "pending";
   const isFullMember = isActiveMember && membership?.role !== "guest";
   const isOwner = isActiveMember && membership?.role === "president";
+  // 회원 승인·관리 권한: 회장·총무 (can_manage_club 과 동일 기준)
+  const canManage =
+    isActiveMember &&
+    (membership?.role === "president" || membership?.role === "treasurer");
   const isOpenJoin = club.join_policy === "open";
   const joinClubWithId = joinClub.bind(null, id);
 
@@ -108,6 +114,31 @@ export default async function ClubDetailPage({
       (a, b) =>
         (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9),
     );
+  }
+
+  // 가입 신청 대기 목록 (회장·총무만). RLS: 정회원은 pending row 조회 가능.
+  let pendingMembers: PendingMember[] = [];
+  if (canManage) {
+    const { data } = await supabase
+      .from("club_members")
+      .select("user_id, role, joined_at, profiles(name, avatar_url)")
+      .eq("club_id", id)
+      .eq("status", "pending")
+      .order("joined_at", { ascending: true });
+    pendingMembers = (
+      (data ?? []) as unknown as {
+        user_id: string;
+        role: string;
+        joined_at: string;
+        profiles: { name: string | null; avatar_url: string | null } | null;
+      }[]
+    ).map((m) => ({
+      user_id: m.user_id,
+      role: m.role,
+      joined_at: m.joined_at,
+      name: m.profiles?.name ?? "축구인",
+      avatar_url: m.profiles?.avatar_url ?? null,
+    }));
   }
 
   return (
@@ -253,6 +284,11 @@ export default async function ClubDetailPage({
           </Link>
         )}
 
+        {/* 가입 신청 승인 대기 (회장·총무만) */}
+        {canManage && (
+          <PendingRequests clubId={club.id} members={pendingMembers} />
+        )}
+
         {/* 회원 명단 (정회원만) */}
         {isFullMember && roster.length > 0 && (
           <section className="mt-6">
@@ -263,44 +299,82 @@ export default async function ClubDetailPage({
                 {roster.length}
               </span>
             </h2>
-            <ul className="grid gap-2 sm:grid-cols-2">
-              {roster.map((m) => {
-                const name = m.profiles?.name ?? "축구인";
-                const avatar = m.profiles?.avatar_url;
-                return (
-                  <li
-                    key={m.user_id}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-900/[0.06] bg-white/70 px-3.5 py-2.5 shadow-sm backdrop-blur-xl"
-                  >
-                    {avatar ? (
-                      // 카카오 CDN 호스트가 유동적이라 next/image 대신 일반 img 사용
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={avatar}
-                        alt={name}
-                        referrerPolicy="no-referrer"
-                        className="size-9 shrink-0 rounded-full object-cover ring-1 ring-slate-900/10"
-                      />
-                    ) : (
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#84cc16]/15 text-sm font-bold text-[#4d7c0f]">
-                        {name.charAt(0)}
-                      </span>
-                    )}
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">
-                      {name}
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                        ROLE_BADGE[m.role] ??
-                        "border-slate-900/10 bg-slate-900/[0.04] text-slate-500"
+            {canManage ? (
+              // 회장·총무: 역할 변경·강퇴·회장 이양 컨트롤
+              <MemberManager
+                clubId={club.id}
+                currentUserId={user.id}
+                iAmOwner={isOwner}
+                members={roster.map<RosterMember>((m) => ({
+                  user_id: m.user_id,
+                  role: m.role,
+                  name: m.profiles?.name ?? "축구인",
+                  avatar_url: m.profiles?.avatar_url ?? null,
+                }))}
+              />
+            ) : (
+              // 일반 정회원: 읽기 전용 명단 (운영진/회원/게스트 그룹핑)
+              <div className="space-y-5">
+                {groupRoster(roster).map((g) => (
+                  <div key={g.group}>
+                    <p
+                      className={`mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold ${
+                        g.group === "staff" ? "text-[#4d7c0f]" : "text-slate-500"
                       }`}
                     >
-                      {roleLabel(m.role)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+                      {g.label}
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${
+                          g.group === "staff"
+                            ? "bg-[#84cc16]/15 text-[#4d7c0f]"
+                            : "bg-slate-900/[0.06] text-slate-500"
+                        }`}
+                      >
+                        {g.members.length}
+                      </span>
+                    </p>
+                    <ul className="grid gap-2 sm:grid-cols-2">
+                      {g.members.map((m) => {
+                        const name = m.profiles?.name ?? "축구인";
+                        const avatar = m.profiles?.avatar_url;
+                        return (
+                          <li
+                            key={m.user_id}
+                            className="flex items-center gap-3 rounded-2xl border border-slate-900/[0.06] bg-white/70 px-3.5 py-2.5 shadow-sm backdrop-blur-xl"
+                          >
+                            {avatar ? (
+                              // 카카오 CDN 호스트가 유동적이라 next/image 대신 일반 img 사용
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={avatar}
+                                alt={name}
+                                referrerPolicy="no-referrer"
+                                className="size-9 shrink-0 rounded-full object-cover ring-1 ring-slate-900/10"
+                              />
+                            ) : (
+                              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#84cc16]/15 text-sm font-bold text-[#4d7c0f]">
+                                {name.charAt(0)}
+                              </span>
+                            )}
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">
+                              {name}
+                            </span>
+                            <span
+                              className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                ROLE_BADGE[m.role] ??
+                                "border-slate-900/10 bg-slate-900/[0.04] text-slate-500"
+                              }`}
+                            >
+                              {roleLabel(m.role)}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 
