@@ -287,7 +287,7 @@ export function MatchForm({
         <Button
           type="submit"
           disabled={form.formState.isSubmitting}
-          className="mt-1 h-12 w-full rounded-2xl bg-[#84cc16] text-base font-semibold text-[#1a2e05] shadow-lg shadow-[#84cc16]/30 transition-all hover:bg-[#77b514] hover:not-disabled:-translate-y-0.5"
+          className="mt-1 h-12 w-full rounded-2xl bg-gradient-to-br from-[#bef264] to-[#84cc16] text-base font-semibold text-[#1a2e05] shadow-lg shadow-[#a3e635]/40 ring-1 ring-inset ring-white/50 transition-all hover:from-[#d9f99d] hover:to-[#a3e635] hover:not-disabled:-translate-y-0.5"
         >
           {form.formState.isSubmitting
             ? "저장 중…"

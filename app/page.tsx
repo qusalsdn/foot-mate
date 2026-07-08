@@ -377,7 +377,7 @@ export default async function HomePage({
             </h2>
             <Link
               href="/clubs/new"
-              className="group inline-flex items-center gap-1.5 rounded-full bg-[#84cc16] px-3.5 py-2 text-sm font-semibold text-[#1a2e05] shadow-md shadow-[#84cc16]/30 transition-all hover:-translate-y-0.5 hover:bg-[#77b514]"
+              className="group inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-[#bef264] to-[#84cc16] px-3.5 py-2 text-sm font-semibold text-[#1a2e05] shadow-lg shadow-[#a3e635]/40 ring-1 ring-inset ring-white/50 transition-all hover:-translate-y-0.5 hover:from-[#d9f99d] hover:to-[#a3e635] hover:shadow-[#a3e635]/50"
             >
               <Plus className="size-4 transition-transform group-hover:rotate-90" />
               클럽 만들기
