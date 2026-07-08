@@ -9,6 +9,7 @@ import { SIDO_LIST, districtsOf, formatRegion, parseRegion, sidoOrder } from "@/
 import { NotificationBell } from "@/components/notification-bell";
 import { SignOutButton } from "@/components/sign-out-button";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
+import { NotificationNudge } from "@/components/push/notification-nudge";
 
 type Club = {
   id: string;
@@ -260,6 +261,9 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
         {/* PWA 설치 유도 (안드로이드/데스크톱 버튼 · iOS 안내) */}
         <InstallPrompt />
+
+        {/* 알림 켜기 유도 (현재 계정 미구독 시) */}
+        <NotificationNudge userId={user.id} />
 
         {/* 인사말 */}
         <div className="mb-8">

@@ -1,116 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Bell, BellOff, Loader2 } from "lucide-react";
-import {
-  deletePushSubscription,
-  isPushSubscribed,
-  savePushSubscription,
-} from "@/app/me/push-actions";
-
-/** VAPID 공개키(base64url) → subscribe 가 요구하는 Uint8Array (ArrayBuffer 백업) */
-function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(b64);
-  const arr = new Uint8Array(new ArrayBuffer(raw.length));
-  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
-  return arr;
-}
-
-type State = "loading" | "unsupported" | "off" | "on" | "denied";
+import { usePush } from "./use-push";
 
 /**
- * 기기 푸시 알림 켜기/끄기 토글. 권한 요청 → pushManager.subscribe → 서버에 구독 저장.
- * 앱이 꺼져 있어도 알림을 받으려면 이걸 켜야 한다(브라우저/기기별로 1회).
+ * 기기 푸시 알림 켜기/끄기 토글 (/me). 상태·구독 로직은 usePush 훅에 위임한다.
+ * on/off 는 '현재 계정이 이 기기를 구독 중인지'로 판단한다.
  */
 export function PushToggle() {
-  const [state, setState] = useState<State>("loading");
-  const [busy, setBusy] = useState(false);
-
-  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
-  useEffect(() => {
-    (async () => {
-      if (
-        typeof window === "undefined" ||
-        !("serviceWorker" in navigator) ||
-        !("PushManager" in window) ||
-        !("Notification" in window)
-      ) {
-        setState("unsupported");
-        return;
-      }
-      if (Notification.permission === "denied") {
-        setState("denied");
-        return;
-      }
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      // on/off 는 '현재 계정'이 이 기기를 구독 중인지로 판단(브라우저 구독 유무 아님).
-      // 다른 계정이 구독해 둔 기기라면 현재 계정 기준으론 '꺼짐'.
-      const mine = sub ? await isPushSubscribed(sub.endpoint) : false;
-      setState(mine ? "on" : "off");
-    })();
-  }, []);
-
-  async function enable() {
-    if (!vapidKey) {
-      alert("푸시 설정이 완료되지 않았어요(VAPID 키 없음).");
-      return;
-    }
-    setBusy(true);
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setState(permission === "denied" ? "denied" : "off");
-        return;
-      }
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      });
-      const json = sub.toJSON() as {
-        endpoint?: string;
-        keys?: { p256dh?: string; auth?: string };
-      };
-      const res = await savePushSubscription({
-        endpoint: json.endpoint!,
-        keys: { p256dh: json.keys!.p256dh!, auth: json.keys!.auth! },
-      });
-      if (res.error) {
-        await sub.unsubscribe();
-        alert(res.error);
-        setState("off");
-        return;
-      }
-      setState("on");
-    } catch (err) {
-      console.warn("[push] 구독 실패", err);
-      setState("off");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function disable() {
-    setBusy(true);
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) {
-        await deletePushSubscription(sub.endpoint);
-        await sub.unsubscribe();
-      }
-      setState("off");
-    } catch (err) {
-      console.warn("[push] 해제 실패", err);
-    } finally {
-      setBusy(false);
-    }
-  }
-
+  const { state, busy, enable, disable } = usePush();
   const on = state === "on";
 
   return (
