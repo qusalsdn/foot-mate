@@ -37,17 +37,24 @@ type StatRow = {
   assists: number;
   profiles: Profile | null;
 };
+type Member = {
+  user_id: string;
+  role: string;
+  profiles: Profile | null;
+};
 
 function Roster({
   title,
   rows,
   accent,
   withRank,
+  muted,
 }: {
   title: string;
   rows: Attendance[];
   accent: string;
   withRank?: boolean;
+  muted?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -61,7 +68,7 @@ function Roster({
         {rows.map((a, i) => (
           <li
             key={a.user_id}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-900/[0.06] bg-white/70 py-1 pl-1 pr-3 shadow-sm backdrop-blur-xl"
+            className={`inline-flex items-center gap-2 rounded-full border border-slate-900/[0.06] py-1 pl-1 pr-3 shadow-sm backdrop-blur-xl ${muted ? "bg-white/40 opacity-60" : "bg-white/70"}`}
           >
             {withRank && (
               <span className="ml-1 w-4 text-center text-xs font-bold tabular-nums text-slate-400">
@@ -140,7 +147,7 @@ export default async function MatchDetailPage({
   // 라우트의 클럽과 매치의 클럽이 다르면 404 (URL 조작 방지)
   if (!match || match.club_id !== id) notFound();
 
-  const [{ data: attData }, { data: result }, { data: statData }] =
+  const [{ data: attData }, { data: result }, { data: statData }, { data: memberData }] =
     await Promise.all([
       supabase
         .from("match_attendances")
@@ -156,10 +163,18 @@ export default async function MatchDetailPage({
         .from("match_stats")
         .select("user_id, goals, assists, profiles(name, avatar_url)")
         .eq("match_id", matchId),
+      // 미투표 계산용 활성 회원 명단. RLS상 정회원만 전체가 보이고(게스트는 자기 행만),
+      // 게스트는 아래에서 미투표 섹션 자체를 숨긴다.
+      supabase
+        .from("club_members")
+        .select("user_id, role, profiles(name, avatar_url)")
+        .eq("club_id", id)
+        .eq("status", "active"),
     ]);
 
   const attendances = (attData ?? []) as unknown as Attendance[];
   const stats = (statData ?? []) as unknown as StatRow[];
+  const members = (memberData ?? []) as unknown as Member[];
 
   const attending = attendances.filter(
     (a) => a.status === "attending" && !a.is_waitlist,
@@ -169,6 +184,25 @@ export default async function MatchDetailPage({
   );
   const maybeList = attendances.filter((a) => a.status === "maybe");
   const absentList = attendances.filter((a) => a.status === "absent");
+
+  // 미투표: 응답이 없는 정회원. 게스트는 로스터를 못 보므로(RLS) 섹션 자체를 숨기고,
+  // 목록에서도 게스트는 제외한다(초대제라 클럽 전체 미투표로 세면 오해).
+  const isFullMember = membership.role !== "guest";
+  const votedIds = new Set(attendances.map((a) => a.user_id));
+  const notVoted: Attendance[] = isFullMember
+    ? members
+        .filter((m) => m.role !== "guest" && !votedIds.has(m.user_id))
+        .map((m) => ({
+          user_id: m.user_id,
+          status: "none",
+          is_waitlist: false,
+          responded_at: "",
+          profiles: m.profiles,
+        }))
+        .sort((a, b) =>
+          (a.profiles?.name ?? "").localeCompare(b.profiles?.name ?? "", "ko"),
+        )
+    : [];
 
   const myAtt = attendances.find((a) => a.user_id === user.id) ?? null;
   const myChoice =
@@ -411,7 +445,7 @@ export default async function MatchDetailPage({
             <Users className="size-4 text-[#65a30d]" />
             참석 현황
           </h2>
-          {attendances.length === 0 ? (
+          {attendances.length === 0 && notVoted.length === 0 ? (
             <p className="py-4 text-center text-sm text-slate-400">
               아직 참석 응답이 없어요.
             </p>
@@ -430,6 +464,12 @@ export default async function MatchDetailPage({
               />
               <Roster title="미정" rows={maybeList} accent="bg-slate-300" />
               <Roster title="불참" rows={absentList} accent="bg-red-400" />
+              <Roster
+                title="미투표"
+                rows={notVoted}
+                accent="border border-dashed border-slate-400 bg-transparent"
+                muted
+              />
             </>
           )}
         </section>
