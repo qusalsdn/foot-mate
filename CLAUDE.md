@@ -33,7 +33,7 @@
 | enum | 한글 | 권한 영역 |
 |------|------|-----------|
 | `president` | 회장 | 클럽 설정·삭제 + 아래 전부 |
-| `treasurer` | 총무 | 회원 승인·역할변경, 회비/정산, 공지 |
+| `treasurer` | 총무 | 회원 승인·역할변경, 회비/정산, 공지, 매치 관리 |
 | `manager` | 감독 | 매치 생성·편성, 경기 결과·기록, 공지 |
 | `coach` | 코치 | 감독과 동일 (매치 영역) |
 | `member` | 회원 | 조회, 참석 투표, 자유글 |
@@ -43,7 +43,7 @@
 
 - `is_club_member(club_id)` — 조회 (게스트 포함, active 회원)
 - `is_full_member(club_id)` — 민감 조회 (게스트 제외)
-- `can_manage_match(club_id)` — 매치/편성/결과/기록 → 회장·감독·코치
+- `can_manage_match(club_id)` — 매치/편성/결과/기록 → 회장·총무·감독·코치
 - `can_manage_club(club_id)` — 회원/회비/공지 → 회장·총무
 - `is_club_owner(club_id)` — 클럽 설정/삭제 → 회장
 - `shares_club_with(user_id)` — 프로필 조회용 (같은 클럽 소속 여부)
@@ -110,10 +110,11 @@ pnpm dlx shadcn@latest add <name> # UI 컴포넌트 추가
 
 ## 아직 안 만든 것 (TODO)
 
-- 기능 페이지 (미구현): 매치(일정·참석 투표·편성·결과·기록), 회비/정산, 커뮤니티(게시판·댓글), 알림. ※ 로그인·클럽 생성/목록/상세/가입은 구현 완료
+- 기능 페이지 (미구현): 매치 **팀 편성**, 회비/정산, 커뮤니티(게시판·댓글), 알림. ※ 로그인·클럽 생성/목록/상세/가입, **매치(일정·참석 투표·결과·기록)** 는 구현 완료
+- 매치 라우트: `/clubs/[id]/matches`(목록) · `/new`(생성, 회장·총무·감독·코치) · `/[matchId]`(상세+참석투표+결과·기록). 날짜는 `lib/date.ts`(KST 고정), 라벨은 `lib/constants/matches.ts`, 스키마는 `lib/schemas/match.ts`. 참석 투표는 `vote_attendance` RPC(정원·대기자 자동 처리) 경유.
 - DB 타입 생성 (`supabase gen types typescript`) → 클라이언트에 제네릭으로 물려 쿼리 타입 안전성 확보 (현재 쿼리는 untyped, `as unknown as` 캐스팅 사용 중)
 - PWA 배선: `manifest.webmanifest`(아이콘은 `public/app-icon-*` · `apple-touch-icon.png` 네온 다크로 준비됨) + 서비스워커 등록 + `layout.tsx`에 apple-touch-icon link
-- 정원 초과 시 대기자 처리 + 취소 시 대기 1번 자동 승격 RPC (`join_match`) — 동시성 안전 필요
+- ~~정원 초과 시 대기자 처리 + 취소 시 대기 자동 승격 RPC~~ → `vote_attendance`(`*_vote_attendance.sql`)로 구현. security definer로 대기열을 원자적으로 재정렬(선착순). 완전한 동시성 보장은 아니지만 실사용 충분.
 - Web Push 발송 Edge Function (`notifications` insert → `push_subscriptions` 조회 → 전송). 발송 라이브러리 필요 (Edge Function은 Deno이므로 `web-push` npm 대신 Deno 호환 방식 또는 Next.js Node 라우트에서 발송)
 - 구장 위치 지도: 카카오맵 SDK (npm 아님, 스크립트 로드)
 - 카카오 실제 연동 후 `raw_user_meta_data` 실제 payload 확인: `handle_new_user`는 `name`→`full_name`→`nickname`→email앞부분→`'축구인'`, 사진은 `avatar_url`→`picture` fallback으로 이미 대응됨. 실제 카카오 응답 키가 다르면 이 목록만 조정

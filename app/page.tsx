@@ -1,9 +1,21 @@
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { Compass, LogOut, MapPin, Plus, Search, Users, X } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronRight,
+  Clock,
+  Compass,
+  LogOut,
+  MapPin,
+  Plus,
+  Search,
+  Users,
+  X,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { roleLabel } from "@/lib/constants/roles";
+import { formatKstDate, formatKstTime } from "@/lib/date";
 import {
   SIDO_LIST,
   districtsOf,
@@ -53,6 +65,44 @@ const ROLE_BADGE: Record<string, string> = {
   treasurer: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
 };
 
+type UpcomingMatch = {
+  id: string;
+  club_id: string;
+  title: string;
+  match_date: string;
+  status: string;
+};
+type MyVote = { status: string; is_waitlist: boolean };
+
+// 내 참석 응답 뱃지 (미투표 = 라임 강조로 투표 넛지)
+function VoteBadge({ vote }: { vote?: MyVote }) {
+  let label: string;
+  let cls: string;
+  if (!vote) {
+    label = "미투표";
+    cls = "border-[#84cc16]/40 bg-[#84cc16]/10 text-[#4d7c0f]";
+  } else if (vote.status === "attending" && vote.is_waitlist) {
+    label = "대기";
+    cls = "border-amber-500/25 bg-amber-500/10 text-amber-600";
+  } else if (vote.status === "attending") {
+    label = "참석";
+    cls = "border-[#84cc16]/50 bg-[#84cc16] text-[#1a2e05]";
+  } else if (vote.status === "maybe") {
+    label = "미정";
+    cls = "border-slate-900/10 bg-slate-900/[0.04] text-slate-500";
+  } else {
+    label = "불참";
+    cls = "border-red-500/25 bg-red-500/[0.08] text-red-500";
+  }
+  return (
+    <span
+      className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold ${cls}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -93,6 +143,49 @@ export default async function HomePage({
     clubs: Club | null;
   }>;
   const myClubIds = new Set(myClubs.map((m) => m.clubs?.id));
+
+  // 다가오는 매치: 내가 속한 모든 클럽의 예정(모집중·마감) & 미래 경기, 가까운 순 4개
+  const activeClubIds = myClubs
+    .map((m) => m.clubs?.id)
+    .filter((v): v is string => !!v);
+  const clubNameById = new Map(
+    myClubs.map((m) => [m.clubs?.id, m.clubs?.name] as const),
+  );
+  let upcomingMatches: UpcomingMatch[] = [];
+  const myVotes = new Map<string, MyVote>();
+  if (activeClubIds.length > 0) {
+    const { data: um } = await supabase
+      .from("matches")
+      .select("id, club_id, title, match_date, status")
+      .in("club_id", activeClubIds)
+      .in("status", ["scheduled", "closed"])
+      .gte("match_date", new Date().toISOString())
+      .order("match_date", { ascending: true })
+      .limit(4);
+    upcomingMatches = (um ?? []) as unknown as UpcomingMatch[];
+
+    if (upcomingMatches.length > 0) {
+      // 내 응답만 조회해 매치별로 매핑 (미투표 넛지용)
+      const { data: votes } = await supabase
+        .from("match_attendances")
+        .select("match_id, status, is_waitlist")
+        .eq("user_id", user.id)
+        .in(
+          "match_id",
+          upcomingMatches.map((m) => m.id),
+        );
+      for (const v of (votes ?? []) as {
+        match_id: string;
+        status: string;
+        is_waitlist: boolean;
+      }[]) {
+        myVotes.set(v.match_id, {
+          status: v.status,
+          is_waitlist: v.is_waitlist,
+        });
+      }
+    }
+  }
 
   // 지역 필터 칩: 전체 클럽(내 클럽 포함)의 지역을 시/도·구로 파싱해 노출
   const { data: regionRows } = await supabase
@@ -223,6 +316,52 @@ export default async function HomePage({
             {displayName}님 <span className="text-[#65a30d]">⚽</span>
           </h1>
         </div>
+
+        {/* 다가오는 매치 (있을 때만) */}
+        {upcomingMatches.length > 0 && (
+          <section className="mb-10">
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
+              <CalendarDays className="size-5 text-[#65a30d]" />
+              다가오는 매치
+            </h2>
+            <ul className="grid gap-3">
+              {upcomingMatches.map((m) => (
+                <li key={m.id}>
+                  <Link
+                    href={`/clubs/${m.club_id}/matches/${m.id}`}
+                    className="group block"
+                  >
+                    <div className="flex items-center gap-3.5 rounded-2xl border border-slate-900/[0.06] bg-white/80 p-3.5 shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-[#84cc16]/40 hover:shadow-lg hover:shadow-[#84cc16]/10 sm:p-4">
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#84cc16]/12 text-[#4d7c0f]">
+                        <CalendarDays className="size-5" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-slate-400">
+                          {clubNameById.get(m.club_id) ?? "내 클럽"}
+                        </p>
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {m.title}
+                        </p>
+                        <p className="mt-0.5 flex items-center gap-x-3 text-xs text-slate-500">
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarDays className="size-3" />
+                            {formatKstDate(m.match_date)}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="size-3" />
+                            {formatKstTime(m.match_date)}
+                          </span>
+                        </p>
+                      </div>
+                      <VoteBadge vote={myVotes.get(m.id)} />
+                      <ChevronRight className="size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#65a30d]" />
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* 내 클럽 */}
         <section className="mb-10">

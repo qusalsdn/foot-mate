@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowRight,
   CalendarDays,
   MapPin,
   MessageSquare,
@@ -53,12 +54,10 @@ type RosterRow = {
   profiles: { name: string | null; avatar_url: string | null } | null;
 };
 
-// 곧 추가될 기능 미리보기 타일
+// 곧 추가될 기능 미리보기 타일 (매치는 구현 완료 → 별도 진입 카드로 노출)
 const FEATURES = [
-  { icon: CalendarDays, label: "매치", desc: "일정·참석 투표" },
   { icon: Wallet, label: "회비", desc: "정산·미납 관리" },
   { icon: MessageSquare, label: "커뮤니티", desc: "게시판·댓글" },
-  { icon: Users, label: "회원", desc: "명단·역할" },
 ];
 
 export default async function ClubDetailPage({
@@ -234,6 +233,25 @@ export default async function ClubDetailPage({
             )}
           </div>
         </div>
+
+        {/* 매치 진입 (활성 회원 — 게스트 포함) */}
+        {isActiveMember && (
+          <Link
+            href={`/clubs/${club.id}/matches`}
+            className="group mt-6 flex items-center gap-4 overflow-hidden rounded-2xl border border-slate-900/[0.06] bg-white/80 p-4 shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-[#84cc16]/40 hover:shadow-lg hover:shadow-[#84cc16]/10 sm:p-5"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#84cc16]/12 text-[#4d7c0f]">
+              <CalendarDays className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-800">매치</p>
+              <p className="truncate text-xs text-slate-400">
+                일정 확인 · 참석 투표 · 경기 결과
+              </p>
+            </div>
+            <ArrowRight className="size-5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#65a30d]" />
+          </Link>
+        )}
 
         {/* 회원 명단 (정회원만) */}
         {isFullMember && roster.length > 0 && (
