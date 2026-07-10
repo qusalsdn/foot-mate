@@ -114,7 +114,8 @@ pnpm dlx shadcn@latest add <name> # UI 컴포넌트 추가
 - 기능 페이지 (미구현): 매치 **팀 편성**, 회비/정산, 커뮤니티(게시판·댓글), 알림. ※ 로그인·클럽 생성/목록/상세/가입, **매치(일정·참석 투표·결과·기록)** 는 구현 완료
 - 매치 라우트: `/clubs/[id]/matches`(목록) · `/new`(생성, 회장·총무·감독·코치) · `/[matchId]`(상세+참석투표+결과·기록). 날짜는 `lib/date.ts`(KST 고정), 라벨은 `lib/constants/matches.ts`, 스키마는 `lib/schemas/match.ts`. 참석 투표는 `vote_attendance` RPC(정원·대기자 자동 처리) 경유.
 - DB 타입 생성 (`supabase gen types typescript`) → 클라이언트에 제네릭으로 물려 쿼리 타입 안전성 확보 (현재 쿼리는 untyped, `as unknown as` 캐스팅 사용 중)
-- PWA 배선: `manifest.webmanifest`(아이콘은 `public/app-icon-*` · `apple-touch-icon.png` 네온 다크로 준비됨) + 서비스워커 등록 + `layout.tsx`에 apple-touch-icon link
+- ~~PWA 배선~~ → 완료. `manifest.webmanifest` + 서비스워커 등록(`components/push/service-worker-register`) + `layout.tsx`의 apple-touch-icon link. 아이콘은 `public/app-icon-*` · `apple-touch-icon.png`(네온 다크).
+- ~~스플래시 스크린~~ → 완료. Android는 manifest(`background_color` + 512 아이콘)로 자동 생성된다. **iOS는 manifest를 안 읽으므로** 기기별 `apple-touch-startup-image`가 필요하고, 없으면 홈 화면 실행 시 흰 화면이 뜬다. 기기 목록은 `lib/constants/ios-splash.ts` 단일 소스 — `layout.tsx`가 link 태그를, `pnpm splash`(`scripts/generate-splash.mjs`, sharp)가 `public/splash/*.png`를 만든다. 기기를 추가하면 **반드시 `pnpm splash`를 다시 돌릴 것**(링크만 있고 PNG가 없으면 그 기기만 조용히 흰 화면).
 - ~~정원 초과 시 대기자 처리 + 취소 시 대기 자동 승격 RPC~~ → `vote_attendance`(`*_vote_attendance.sql`)로 구현. security definer로 대기열을 원자적으로 재정렬(선착순). 완전한 동시성 보장은 아니지만 실사용 충분.
 - Web Push 발송 Edge Function (`notifications` insert → `push_subscriptions` 조회 → 전송). 발송 라이브러리 필요 (Edge Function은 Deno이므로 `web-push` npm 대신 Deno 호환 방식 또는 Next.js Node 라우트에서 발송)
 - 구장 위치 지도: 카카오맵 SDK (npm 아님, 스크립트 로드)
