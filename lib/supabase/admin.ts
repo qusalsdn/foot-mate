@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
 /**
  * 서버 전용 관리자 클라이언트 — service_role(secret) 키로 RLS 를 우회한다.
@@ -11,7 +12,7 @@ export function createAdminClient() {
   if (!url || !key) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY(또는 URL)가 설정되지 않았습니다");
   }
-  return createClient(url, key, {
+  return createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

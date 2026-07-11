@@ -3,14 +3,14 @@
  * 역할 라벨(lib/constants/roles.ts)과 같은 패턴.
  */
 
-/** match_type: 경기 성격 */
-export const MATCH_TYPE_LABELS = {
+/** match_type: 경기 성격. 리터럴 튜플이라 z.enum(MATCH_TYPES)이 유니온을 그대로 추론한다. */
+export const MATCH_TYPES = ["internal", "friendly", "league"] as const;
+export type MatchType = (typeof MATCH_TYPES)[number];
+export const MATCH_TYPE_LABELS: Record<MatchType, string> = {
   internal: "자체전",
   friendly: "친선경기",
   league: "리그",
-} as const;
-export type MatchType = keyof typeof MATCH_TYPE_LABELS;
-export const MATCH_TYPES = Object.keys(MATCH_TYPE_LABELS) as MatchType[];
+};
 export function matchTypeLabel(t: string): string {
   return MATCH_TYPE_LABELS[t as MatchType] ?? t;
 }

@@ -37,7 +37,7 @@ export const matchSchema = z
       .string()
       .refine((v) => v === "" || DATETIME_LOCAL.test(v), "일시를 다시 선택해주세요")
       .optional(),
-    type: z.enum(MATCH_TYPES as [string, ...string[]]),
+    type: z.enum(MATCH_TYPES),
     opponent: z.string().trim().max(30, "30자 이하로 입력해주세요").optional(),
     locationName: z.string().trim().max(60, "60자 이하로 입력해주세요").optional(),
     // 정원: 비우면 무제한

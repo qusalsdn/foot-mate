@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { matchSchema } from "@/lib/schemas/match";
 import { kstInputToUtcIso } from "@/lib/date";
+import type { MatchType } from "@/lib/constants/matches";
 
 export type MatchMutationResult = { error: string };
 
@@ -13,7 +14,7 @@ function toRow(v: {
   title: string;
   matchDate: string;
   voteDeadline?: string;
-  type: string;
+  type: MatchType;
   opponent?: string;
   locationName?: string;
   capacity?: number;

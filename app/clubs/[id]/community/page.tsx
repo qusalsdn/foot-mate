@@ -109,11 +109,9 @@ export default async function CommunityPage({
   // 게스트는 조회·댓글만 — 글 작성은 정회원만 (RLS `post write`=is_full_member 와 일치)
   const canWritePost = membership.role !== "guest";
 
-  // 필터: URL 임의값 차단 — 유효 카테고리만 신뢰
+  // 필터: URL 임의값 차단 — 유효 카테고리만 신뢰 (find 로 리터럴 유니온 추론, 캐스팅 불필요)
   const activeFilter =
-    categoryParam && (POST_CATEGORY_FILTERS as readonly string[]).includes(categoryParam)
-      ? categoryParam
-      : null;
+    POST_CATEGORY_FILTERS.find((c) => c === categoryParam) ?? null;
 
   let query = supabase
     .from("posts")
