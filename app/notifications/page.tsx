@@ -2,10 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, Bell, CheckCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { formatRelative } from "@/lib/date";
-import { notificationMeta } from "@/lib/constants/notifications";
+import { NOTIFICATIONS_PAGE_SIZE } from "@/lib/constants/notifications";
 import { NotificationsRealtime } from "@/components/notifications-realtime";
-import { NotificationItem } from "./notification-item";
+import { NotificationList } from "./notification-list";
 import { markAllNotificationsRead } from "./actions";
 
 export default async function NotificationsPage() {
@@ -15,14 +14,25 @@ export default async function NotificationsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // 첫 페이지: PAGE_SIZE+1 개를 받아 "더 보기" 존재 여부(hasMore)를 판단한다.
   const { data } = await supabase
     .from("notifications")
     .select("id, type, title, body, link, read_at, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
-    .limit(50);
-  const notis = data ?? [];
-  const unreadCount = notis.filter((n) => !n.read_at).length;
+    .order("id", { ascending: false })
+    .limit(NOTIFICATIONS_PAGE_SIZE + 1);
+  const rows = data ?? [];
+  const hasMore = rows.length > NOTIFICATIONS_PAGE_SIZE;
+  const notis = rows.slice(0, NOTIFICATIONS_PAGE_SIZE);
+
+  // 안읽음 개수는 전체 기준(첫 페이지에 국한되지 않도록 count 쿼리로 정확히).
+  const { count } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .is("read_at", null);
+  const unreadCount = count ?? 0;
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#f6f8f4] text-slate-900">
@@ -84,57 +94,7 @@ export default async function NotificationsPage() {
             </p>
           </div>
         ) : (
-          <ul className="grid gap-2">
-            {notis.map((n) => {
-              const meta = notificationMeta(n.type);
-              const Icon = meta.icon;
-              const unread = !n.read_at;
-              return (
-                <li key={n.id}>
-                  <NotificationItem id={n.id} link={n.link} unread={unread}>
-                    <div
-                      className={`flex items-start gap-3 rounded-2xl border p-4 shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#84cc16]/10 ${
-                        unread
-                          ? "border-[#84cc16]/30 bg-white/90"
-                          : "border-slate-900/[0.06] bg-white/60"
-                      }`}
-                    >
-                      <span
-                        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${meta.accent}`}
-                      >
-                        <Icon className="size-5" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={`text-sm ${
-                            unread
-                              ? "font-semibold text-slate-900"
-                              : "font-medium text-slate-600"
-                          }`}
-                        >
-                          {n.title}
-                        </p>
-                        {n.body && (
-                          <p className="mt-0.5 truncate text-sm text-slate-400">
-                            {n.body}
-                          </p>
-                        )}
-                        <p className="mt-1 text-xs text-slate-400">
-                          {formatRelative(n.created_at)}
-                        </p>
-                      </div>
-                      {unread && (
-                        <span
-                          aria-hidden
-                          className="mt-1.5 size-2 shrink-0 rounded-full bg-[#84cc16]"
-                        />
-                      )}
-                    </div>
-                  </NotificationItem>
-                </li>
-              );
-            })}
-          </ul>
+          <NotificationList initial={notis} initialHasMore={hasMore} />
         )}
       </div>
     </div>

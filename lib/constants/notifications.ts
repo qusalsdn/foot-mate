@@ -45,6 +45,9 @@ const FALLBACK = {
   accent: "bg-slate-900/[0.04] text-slate-500",
 };
 
+/** 알림 목록 한 페이지 크기. 첫 로드·"더 보기"가 공유한다. */
+export const NOTIFICATIONS_PAGE_SIZE = 10;
+
 export function notificationMeta(type: string): {
   icon: LucideIcon;
   accent: string;
