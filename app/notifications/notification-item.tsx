@@ -12,11 +12,14 @@ export function NotificationItem({
   id,
   link,
   unread,
+  onRead,
   children,
 }: {
   id: string;
   link: string | null;
   unread: boolean;
+  /** 읽음 처리 직후 호출(목록의 낙관적 업데이트용). 과거 페이지 항목도 즉시 반영된다. */
+  onRead?: (id: string) => void;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -24,7 +27,10 @@ export function NotificationItem({
 
   function handleClick() {
     startTransition(async () => {
-      if (unread) await markNotificationRead(id);
+      if (unread) {
+        onRead?.(id);
+        await markNotificationRead(id);
+      }
       if (link) router.push(link);
     });
   }
