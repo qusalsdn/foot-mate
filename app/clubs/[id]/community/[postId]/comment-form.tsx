@@ -14,20 +14,27 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { MentionTextarea, type MentionMember } from "./mention-textarea";
 
 type CommentFormValues = { content: string };
 
-/** 댓글 작성 폼. 성공 시 입력을 비운다(목록은 서버 revalidate로 갱신). */
+/**
+ * 댓글 작성 폼. 본문은 @멘션 자동완성 입력(MentionTextarea)을 쓴다.
+ * 멘션 대상 user_id 는 폼 값과 별개로 로컬 state 에 모아 서버로 전달한다.
+ * 성공 시 입력·멘션을 비운다(목록은 서버 revalidate로 갱신).
+ */
 export function CommentForm({
   clubId,
   postId,
+  members,
 }: {
   clubId: string;
   postId: string;
+  members: MentionMember[];
 }) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const [mentionIds, setMentionIds] = useState<string[]>([]);
   const form = useForm<CommentFormValues>({
     resolver: zodResolver(commentSchema) as unknown as Resolver<CommentFormValues>,
     defaultValues: { content: "" },
@@ -35,12 +42,16 @@ export function CommentForm({
 
   async function onSubmit(values: CommentFormValues) {
     setServerError(null);
-    const result = await createComment(clubId, postId, values);
+    const result = await createComment(clubId, postId, {
+      ...values,
+      mentionUserIds: mentionIds,
+    });
     if (result?.error) {
       setServerError(result.error);
       return;
     }
     form.reset({ content: "" });
+    setMentionIds([]);
   }
 
   return (
@@ -52,10 +63,19 @@ export function CommentForm({
           render={({ field }) => (
             <FormItem>
               <FormControl>
-                <Textarea
-                  placeholder="댓글을 남겨보세요"
-                  className="min-h-20 rounded-xl border-slate-900/10 bg-white/70 px-3.5 py-3 transition-colors focus-visible:border-[#84cc16] focus-visible:ring-[#84cc16]/25"
-                  {...field}
+                <MentionTextarea
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  members={members}
+                  onMentionsChange={setMentionIds}
+                  placeholder={
+                    members.length > 0
+                      ? "댓글을 남겨보세요 · @로 멤버 언급"
+                      : "댓글을 남겨보세요"
+                  }
+                  className="flex min-h-20 w-full rounded-xl border border-slate-900/10 bg-white/70 px-3.5 py-3 text-base outline-none transition-colors placeholder:text-slate-400 focus-visible:border-[#84cc16] focus-visible:ring-3 focus-visible:ring-[#84cc16]/25 md:text-sm"
                 />
               </FormControl>
               <FormMessage />

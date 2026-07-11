@@ -126,14 +126,37 @@ export async function createComment(
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다" };
 
-  const { error } = await supabase.from("comments").insert({
-    post_id: postId,
-    author_id: user.id,
-    content: parsed.data.content,
-  });
+  const { data: inserted, error } = await supabase
+    .from("comments")
+    .insert({
+      post_id: postId,
+      author_id: user.id,
+      content: parsed.data.content,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !inserted) {
     return { error: "댓글을 남기지 못했어요. 다시 시도해주세요." };
+  }
+
+  // 멘션 저장(부수효과) — 실패해도 댓글 자체는 유지한다.
+  // 클라이언트가 보낸 대상 중 "그 클럽의 활성 회원"만 남겨 넣는다(RLS `cm write` 가 최종 강제).
+  const wanted = Array.from(new Set(parsed.data.mentionUserIds));
+  if (wanted.length > 0) {
+    const { data: valid } = await supabase
+      .from("club_members")
+      .select("user_id")
+      .eq("club_id", clubId)
+      .eq("status", "active")
+      .in("user_id", wanted);
+    const rows = ((valid ?? []) as { user_id: string }[]).map((m) => ({
+      comment_id: inserted.id,
+      user_id: m.user_id,
+    }));
+    if (rows.length > 0) {
+      await supabase.from("comment_mentions").insert(rows);
+    }
   }
 
   revalidatePath(`/clubs/${clubId}/community/${postId}`);

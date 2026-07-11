@@ -34,6 +34,8 @@ export default async function NewPostPage({
 
   // 소속 회원만 글을 쓸 수 있다 (RLS도 막지만 UX상 커뮤니티로 되돌린다)
   if (membership?.status !== "active") redirect(`/clubs/${id}/community`);
+  // 게스트는 글 작성 불가 — 조회·댓글만 (RLS `post write`=is_full_member 와 일치)
+  if (membership.role === "guest") redirect(`/clubs/${id}/community`);
   // 공지는 운영진(회장·총무·감독·코치)만 — RLS `post write` 와 동일 기준
   const canPostNotice = MANAGER_ROLES.has(membership.role);
 

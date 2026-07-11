@@ -1,4 +1,5 @@
 import {
+  AtSign,
   BadgeCheck,
   Bell,
   CalendarPlus,
@@ -32,6 +33,10 @@ const NOTIFICATION_META: Record<string, { icon: LucideIcon; accent: string }> = 
   comment_added: {
     icon: MessageSquare,
     accent: "bg-slate-900/[0.04] text-slate-500",
+  },
+  comment_mention: {
+    icon: AtSign,
+    accent: "bg-[#84cc16]/12 text-[#4d7c0f]",
   },
 };
 
