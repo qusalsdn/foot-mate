@@ -33,7 +33,10 @@ function renderCommentContent(text: string, names: string[]): ReactNode {
   while ((m = pattern.exec(text)) !== null) {
     if (m.index > last) out.push(text.slice(last, m.index));
     out.push(
-      <span key={key++} className="font-semibold text-[#4d7c0f]">
+      <span
+        key={key++}
+        className="rounded-md bg-[#84cc16]/15 px-1 py-0.5 font-semibold text-[#4d7c0f]"
+      >
         {m[0]}
       </span>,
     );
@@ -123,7 +126,9 @@ export default async function PostDetailPage({
 
   const { data: commentData } = await supabase
     .from("comments")
-    .select("id, content, created_at, author_id, profiles(name, avatar_url)")
+    // comment_mentions 가 comments↔profiles 를 정션으로 만들어 `profiles(...)` 임베드가
+    // 모호해진다("more than one relationship") → 작성자 FK(author_id)를 명시해 해소한다.
+    .select("id, content, created_at, author_id, profiles!author_id(name, avatar_url)")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
   const comments = (commentData ?? []) as unknown as CommentRow[];
