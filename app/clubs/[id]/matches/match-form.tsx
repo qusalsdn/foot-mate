@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, useFieldArray, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertCircle,
@@ -9,10 +9,13 @@ import {
   ChevronDown,
   Hourglass,
   MapPin,
+  Plus,
   Swords,
   Tag,
   Users,
+  Users2,
   Wallet,
+  X,
 } from "lucide-react";
 
 import { matchSchema } from "@/lib/schemas/match";
@@ -39,6 +42,8 @@ export type MatchFormValues = {
   locationName: string;
   capacity: string;
   fee: string;
+  // 팀 정의(이름). 자체전 기본 2팀, 친선전은 선택, 리그는 없음.
+  teams: { name: string }[];
 };
 
 const EMPTY: MatchFormValues = {
@@ -50,6 +55,8 @@ const EMPTY: MatchFormValues = {
   locationName: "",
   capacity: "",
   fee: "",
+  // 기본 유형이 자체전이라 2팀으로 시작
+  teams: [{ name: "1팀" }, { name: "2팀" }],
 };
 
 const inputClass =
@@ -72,6 +79,33 @@ export function MatchForm({
     resolver: zodResolver(matchSchema) as unknown as Resolver<MatchFormValues>,
     defaultValues: { ...EMPTY, ...initial },
   });
+  const teamsArray = useFieldArray({ control: form.control, name: "teams" });
+  const type = form.watch("type");
+  const teamsError = form.formState.errors.teams as
+    | { message?: string; root?: { message?: string } }
+    | undefined;
+  // 자체전=내부 팀(2~4), 친선전=상대팀(1~3, 우리팀 자동)
+  const isInternalType = type === "internal";
+  const teamWord = isInternalType ? "팀" : "상대팀";
+  const maxTeams = isInternalType ? 4 : 3;
+  const minTeams = isInternalType ? 2 : 1;
+
+  // 유형 변경 시 입력 정리:
+  // - 자체전: 상대팀 비움 + 내부 팀 2개 기본
+  // - 친선전: 상대팀 비움(리스트로 받음) + 상대팀 1칸 기본(우리팀은 자동)
+  // - 리그: 팀 목록 비움(상대팀은 텍스트)
+  function handleTypeChange(next: string) {
+    if (next === "internal") {
+      form.setValue("opponent", "");
+      teamsArray.replace([{ name: "1팀" }, { name: "2팀" }]);
+    } else if (next === "friendly") {
+      form.setValue("opponent", "");
+      teamsArray.replace([{ name: "" }]);
+    } else {
+      // league
+      teamsArray.replace([]);
+    }
+  }
 
   async function onSubmit(values: MatchFormValues) {
     setServerError(null);
@@ -164,6 +198,10 @@ export function MatchForm({
                 <div className="relative">
                   <select
                     {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      handleTypeChange(e.target.value);
+                    }}
                     className={`${inputClass} w-full appearance-none pl-3.5 pr-9 text-sm text-slate-900`}
                   >
                     {MATCH_TYPES.map((t) => (
@@ -180,29 +218,118 @@ export function MatchForm({
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="opponent"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-1.5 text-slate-700">
-                <Swords className="size-4 text-[#65a30d]" />
-                상대팀
+        {/* 상대팀(단일 텍스트): 리그에서만. 친선전은 아래 상대팀 리스트로 받음 */}
+        {type === "league" && (
+          <FormField
+            control={form.control}
+            name="opponent"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-1.5 text-slate-700">
+                  <Swords className="size-4 text-[#65a30d]" />
+                  상대팀
+                  <span className="text-xs font-normal text-slate-400">
+                    선택
+                  </span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="예: FC 서초"
+                    className={inputClass}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* 자체전=내부 팀 목록 / 친선전=상대팀 목록(우리팀 자동). 리그는 위 단일 상대팀 */}
+        {type !== "league" && (
+          <div className="grid gap-2.5">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
+              <Users2 className="size-4 text-[#65a30d]" />
+              {teamWord}
+              <span className="text-xs font-normal text-slate-400">
+                {isInternalType
+                  ? "우리 인원을 2~4팀으로 나눠요"
+                  : "우리팀은 자동 포함 · 상대팀 1~3개"}
+              </span>
+            </div>
+
+            {/* 친선전: 우리팀 자동 포함 안내 칩 */}
+            {!isInternalType && (
+              <div className="inline-flex w-fit items-center gap-1.5 rounded-xl border border-slate-900/[0.06] bg-white/60 px-3 py-2 text-sm font-semibold text-slate-500">
+                <span className="size-2 rounded-full bg-sky-500" />
+                우리팀
                 <span className="text-xs font-normal text-slate-400">
-                  선택 · 자체전이면 비움
+                  자동 포함
                 </span>
-              </FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="예: FC 서초"
-                  className={inputClass}
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+              </div>
+            )}
+
+            {teamsArray.fields.length > 0 && (
+              <div className="grid gap-2">
+                {teamsArray.fields.map((f, i) => {
+                  const nameErr = (
+                    form.formState.errors.teams as unknown as
+                      | Array<{ name?: { message?: string } }>
+                      | undefined
+                  )?.[i]?.name?.message;
+                  return (
+                    <div key={f.id} className="grid gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#84cc16]/15 text-xs font-bold text-[#4d7c0f]">
+                          {i + 1}
+                        </span>
+                        <Input
+                          placeholder={
+                            isInternalType
+                              ? `${i + 1}팀 이름`
+                              : `상대팀 ${i + 1} 이름`
+                          }
+                          className={`${inputClass} flex-1`}
+                          {...form.register(`teams.${i}.name` as const)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => teamsArray.remove(i)}
+                          disabled={teamsArray.fields.length <= minTeams}
+                          aria-label={`${teamWord} ${i + 1} 삭제`}
+                          className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-slate-900/10 bg-white/70 text-slate-400 transition-colors hover:text-red-500 disabled:pointer-events-none disabled:opacity-35"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                      {nameErr && (
+                        <p className="pl-8 text-xs text-red-600">{nameErr}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {teamsArray.fields.length < maxTeams && (
+              <button
+                type="button"
+                onClick={() => teamsArray.append({ name: "" })}
+                className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-xl border border-dashed border-[#84cc16]/40 bg-[#84cc16]/[0.06] px-3.5 py-2 text-sm font-semibold text-[#4d7c0f] transition-colors hover:bg-[#84cc16]/12"
+              >
+                <Plus className="size-4" />
+                {teamWord} 추가
+              </button>
+            )}
+
+            {(teamsError?.message || teamsError?.root?.message) && (
+              <p className="flex items-center gap-1.5 text-xs text-red-600">
+                <AlertCircle className="size-3.5 shrink-0" />
+                {teamsError.message ?? teamsError.root?.message}
+              </p>
+            )}
+          </div>
+        )}
 
         <FormField
           control={form.control}
