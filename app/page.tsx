@@ -87,10 +87,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     .eq("user_id", user.id)
     .eq("status", "active");
 
-  const myClubs = (memberships ?? []) as unknown as Array<{
-    role: string;
-    clubs: Club | null;
-  }>;
+  const myClubs = memberships ?? [];
   const myClubIds = new Set(myClubs.map((m) => m.clubs?.id));
 
   // 다가오는 매치: 내가 속한 모든 클럽의 예정(모집중·마감) & 미래 경기, 가까운 순 4개
@@ -107,7 +104,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       .gte("match_date", new Date().toISOString())
       .order("match_date", { ascending: true })
       .limit(4);
-    upcomingMatches = (um ?? []) as unknown as UpcomingMatch[];
+    upcomingMatches = um ?? [];
 
     if (upcomingMatches.length > 0) {
       // 내 응답만 조회해 매치별로 매핑 (미투표 넛지용)

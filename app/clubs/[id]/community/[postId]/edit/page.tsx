@@ -7,14 +7,6 @@ import { PageBackBar } from "@/components/page-back-bar";
 const MANAGER_ROLES = new Set(["president", "treasurer", "manager", "coach"]);
 const CAN_MANAGE_ROLES = new Set(["president", "treasurer"]);
 
-type PostRow = {
-  id: string;
-  category: string;
-  title: string;
-  content: string | null;
-  author_id: string;
-};
-
 export default async function EditPostPage({
   params,
 }: {
@@ -42,7 +34,7 @@ export default async function EditPostPage({
     .eq("club_id", id)
     .maybeSingle();
   if (!postData) notFound();
-  const post = postData as unknown as PostRow;
+  const post = postData;
 
   // 수정 권한: 작성자 본인 또는 회장·총무 (RLS `post own` 과 동일 기준)
   const canEdit =

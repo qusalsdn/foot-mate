@@ -121,7 +121,7 @@ export default async function CommunityPage({
   if (activeFilter) query = query.eq("category", activeFilter);
 
   const { data: postData } = await query;
-  const posts = (postData ?? []) as unknown as PostRow[];
+  const posts = postData ?? [];
 
   // 게시글별 댓글 수 집계
   const ids = posts.map((p) => p.id);

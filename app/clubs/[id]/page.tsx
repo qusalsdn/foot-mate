@@ -83,7 +83,7 @@ export default async function ClubDetailPage({
       .select("role, user_id, profiles(name, avatar_url)")
       .eq("club_id", id)
       .eq("status", "active");
-    roster = ((data ?? []) as unknown as RosterRow[]).sort(
+    roster = (data ?? []).sort(
       (a, b) =>
         (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9),
     );
@@ -98,14 +98,7 @@ export default async function ClubDetailPage({
       .eq("club_id", id)
       .eq("status", "pending")
       .order("joined_at", { ascending: true });
-    pendingMembers = (
-      (data ?? []) as unknown as {
-        user_id: string;
-        role: string;
-        joined_at: string;
-        profiles: { name: string | null; avatar_url: string | null } | null;
-      }[]
-    ).map((m) => ({
+    pendingMembers = (data ?? []).map((m) => ({
       user_id: m.user_id,
       role: m.role,
       joined_at: m.joined_at,

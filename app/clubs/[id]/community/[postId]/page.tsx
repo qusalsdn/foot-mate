@@ -46,24 +46,6 @@ function renderCommentContent(text: string, names: string[]): ReactNode {
   return out;
 }
 
-type PostRow = {
-  id: string;
-  category: string;
-  title: string;
-  content: string | null;
-  created_at: string;
-  author_id: string;
-  profiles: { name: string | null; avatar_url: string | null } | null;
-};
-
-type CommentRow = {
-  id: string;
-  content: string;
-  created_at: string;
-  author_id: string;
-  profiles: { name: string | null; avatar_url: string | null } | null;
-};
-
 function Avatar({
   name,
   url,
@@ -122,7 +104,7 @@ export default async function PostDetailPage({
     .eq("club_id", id)
     .maybeSingle();
   if (!postData) notFound();
-  const post = postData as unknown as PostRow;
+  const post = postData;
 
   const { data: commentData } = await supabase
     .from("comments")
@@ -131,7 +113,7 @@ export default async function PostDetailPage({
     .select("id, content, created_at, author_id, profiles!author_id(name, avatar_url)")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
-  const comments = (commentData ?? []) as unknown as CommentRow[];
+  const comments = commentData ?? [];
 
   // 멘션 후보(@자동완성): 활성 회원. 로스터는 정회원만 조회 가능(RLS is_full_member)이라
   // 게스트에게는 빈 목록 → 멘션 없이 평범한 입력창이 된다(게스트 회원목록 차단 규칙 유지).
@@ -147,12 +129,7 @@ export default async function PostDetailPage({
       .select("user_id, profiles(name, avatar_url)")
       .eq("club_id", id)
       .eq("status", "active");
-    mentionCandidates = (
-      (memberData ?? []) as unknown as {
-        user_id: string;
-        profiles: { name: string | null; avatar_url: string | null } | null;
-      }[]
-    )
+    mentionCandidates = (memberData ?? [])
       .filter((m) => m.user_id !== user.id) // 본인 제외
       .map((m) => ({
         userId: m.user_id,
@@ -169,10 +146,7 @@ export default async function PostDetailPage({
       .from("comment_mentions")
       .select("comment_id, profiles(name)")
       .in("comment_id", commentIds);
-    for (const row of (mentionData ?? []) as unknown as {
-      comment_id: string;
-      profiles: { name: string | null } | null;
-    }[]) {
+    for (const row of mentionData ?? []) {
       const nm = row.profiles?.name;
       if (!nm) continue;
       const arr = mentionNames.get(row.comment_id) ?? [];

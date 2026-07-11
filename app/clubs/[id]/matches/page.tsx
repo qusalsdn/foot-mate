@@ -132,7 +132,7 @@ export default async function MatchListPage({
     )
     .eq("club_id", id)
     .order("match_date", { ascending: false });
-  const matches = (matchData ?? []) as unknown as MatchRow[];
+  const matches = matchData ?? [];
 
   // 참석 인원 집계 (확정/대기 분리) — 매치별 카운트
   const ids = matches.map((m) => m.id);
