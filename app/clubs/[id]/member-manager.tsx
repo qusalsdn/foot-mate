@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 export type RosterMember = {
   user_id: string;
@@ -228,82 +229,84 @@ function ConfirmDialog({
   const name = confirm.member.name;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-        onClick={onCancel}
-        aria-hidden
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="relative w-full max-w-md rounded-3xl border border-slate-900/[0.08] bg-white p-6 shadow-2xl"
-      >
-        <button
-          type="button"
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
           onClick={onCancel}
-          className="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-700"
-          aria-label="닫기"
+          aria-hidden
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="relative w-full max-w-md rounded-3xl border border-slate-900/[0.08] bg-white p-6 shadow-2xl"
         >
-          <X className="size-4" />
-        </button>
-
-        <span
-          className={`flex size-12 items-center justify-center rounded-2xl ${
-            isTransfer
-              ? "bg-[#84cc16]/12 text-[#4d7c0f]"
-              : "bg-red-500/10 text-red-600"
-          }`}
-        >
-          {isTransfer ? (
-            <Crown className="size-6" />
-          ) : (
-            <AlertTriangle className="size-6" />
-          )}
-        </span>
-
-        <h2 className="mt-4 text-lg font-bold text-slate-900">
-          {isTransfer ? "회장직을 이양할까요?" : "회원을 내보낼까요?"}
-        </h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-          {isTransfer ? (
-            <>
-              <b className="font-semibold text-slate-700">{name}</b> 님을 새 회장으로
-              세우고, 나는 <b className="font-semibold text-slate-700">회원</b>으로
-              내려갑니다. 되돌리려면 새 회장이 다시 이양해야 해요.
-            </>
-          ) : (
-            <>
-              <b className="font-semibold text-slate-700">{name}</b> 님을 클럽에서
-              내보냅니다. 다시 들어오려면 새로 가입해야 해요.
-            </>
-          )}
-        </p>
-
-        <div className="mt-5 flex gap-2.5">
           <button
             type="button"
             onClick={onCancel}
-            disabled={pending}
-            className="h-11 flex-1 cursor-pointer rounded-2xl border border-slate-900/10 bg-white text-[15px] font-semibold text-slate-600 transition-colors hover:bg-slate-900/[0.03] disabled:opacity-50"
+            className="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-700"
+            aria-label="닫기"
           >
-            취소
+            <X className="size-4" />
           </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={pending}
-            className={`inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-2xl text-[15px] font-semibold transition-all disabled:pointer-events-none disabled:opacity-60 ${
+
+          <span
+            className={`flex size-12 items-center justify-center rounded-2xl ${
               isTransfer
-                ? "bg-[#84cc16] text-[#1a2e05] shadow-md shadow-[#84cc16]/30 hover:-translate-y-0.5 hover:bg-[#77b514]"
-                : "bg-red-500 text-white shadow-md shadow-red-500/25 hover:-translate-y-0.5 hover:bg-red-600"
+                ? "bg-[#84cc16]/12 text-[#4d7c0f]"
+                : "bg-red-500/10 text-red-600"
             }`}
           >
-            {pending && <Loader2 className="size-4 animate-spin" />}
-            {isTransfer ? "이양하기" : "내보내기"}
-          </button>
+            {isTransfer ? (
+              <Crown className="size-6" />
+            ) : (
+              <AlertTriangle className="size-6" />
+            )}
+          </span>
+
+          <h2 className="mt-4 text-lg font-bold text-slate-900">
+            {isTransfer ? "회장직을 이양할까요?" : "회원을 내보낼까요?"}
+          </h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+            {isTransfer ? (
+              <>
+                <b className="font-semibold text-slate-700">{name}</b> 님을 새 회장으로
+                세우고, 나는 <b className="font-semibold text-slate-700">회원</b>으로
+                내려갑니다. 되돌리려면 새 회장이 다시 이양해야 해요.
+              </>
+            ) : (
+              <>
+                <b className="font-semibold text-slate-700">{name}</b> 님을 클럽에서
+                내보냅니다. 다시 들어오려면 새로 가입해야 해요.
+              </>
+            )}
+          </p>
+
+          <div className="mt-5 flex gap-2.5">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={pending}
+              className="h-11 flex-1 cursor-pointer rounded-2xl border border-slate-900/10 bg-white text-[15px] font-semibold text-slate-600 transition-colors hover:bg-slate-900/[0.03] disabled:opacity-50"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={pending}
+              className={`inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-2xl text-[15px] font-semibold transition-all disabled:pointer-events-none disabled:opacity-60 ${
+                isTransfer
+                  ? "bg-[#84cc16] text-[#1a2e05] shadow-md shadow-[#84cc16]/30 hover:-translate-y-0.5 hover:bg-[#77b514]"
+                  : "bg-red-500 text-white shadow-md shadow-red-500/25 hover:-translate-y-0.5 hover:bg-red-600"
+              }`}
+            >
+              {pending && <Loader2 className="size-4 animate-spin" />}
+              {isTransfer ? "이양하기" : "내보내기"}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

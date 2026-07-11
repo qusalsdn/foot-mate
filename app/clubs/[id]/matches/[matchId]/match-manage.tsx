@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ModalPortal } from "@/components/ui/modal-portal";
 import { deleteMatch, setMatchStatus } from "./actions";
 
 function DeleteConfirmButton() {
@@ -119,45 +120,47 @@ export function MatchManage({
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-            aria-hidden
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-match-title"
-            className="relative w-full max-w-md rounded-3xl border border-slate-900/[0.08] bg-white p-6 shadow-2xl"
-          >
-            <button
-              type="button"
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
               onClick={() => setOpen(false)}
-              className="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-700"
-              aria-label="닫기"
+              aria-hidden
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-match-title"
+              className="relative w-full max-w-md rounded-3xl border border-slate-900/[0.08] bg-white p-6 shadow-2xl"
             >
-              <X className="size-4" />
-            </button>
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-600">
-              <AlertTriangle className="size-6" />
-            </span>
-            <h2
-              id="delete-match-title"
-              className="mt-4 text-lg font-bold text-slate-900"
-            >
-              매치를 삭제할까요?
-            </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-              참석 응답과 경기 결과·기록이{" "}
-              <b className="font-semibold text-red-600">모두 삭제</b>돼요. 이
-              작업은 되돌릴 수 없어요.
-            </p>
-            <form action={deleteMatchWithId} className="mt-5">
-              <DeleteConfirmButton />
-            </form>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-700"
+                aria-label="닫기"
+              >
+                <X className="size-4" />
+              </button>
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-600">
+                <AlertTriangle className="size-6" />
+              </span>
+              <h2
+                id="delete-match-title"
+                className="mt-4 text-lg font-bold text-slate-900"
+              >
+                매치를 삭제할까요?
+              </h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                참석 응답과 경기 결과·기록이{" "}
+                <b className="font-semibold text-red-600">모두 삭제</b>돼요. 이
+                작업은 되돌릴 수 없어요.
+              </p>
+              <form action={deleteMatchWithId} className="mt-5">
+                <DeleteConfirmButton />
+              </form>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   );

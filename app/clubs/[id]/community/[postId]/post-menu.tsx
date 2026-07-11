@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ModalPortal } from "@/components/ui/modal-portal";
 import { deletePost, deleteComment } from "../actions";
 
 /** 게시글 수정·삭제 메뉴 (작성자 본인 또는 회장·총무에게만 노출). */
@@ -55,65 +56,67 @@ export function PostMenu({
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => !pending && setOpen(false)}
-            aria-hidden
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-post-title"
-            className="relative w-full max-w-sm rounded-3xl border border-slate-900/[0.08] bg-white p-6 shadow-2xl"
-          >
-            <button
-              type="button"
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
               onClick={() => !pending && setOpen(false)}
-              className="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-700"
-              aria-label="닫기"
+              aria-hidden
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-post-title"
+              className="relative w-full max-w-sm rounded-3xl border border-slate-900/[0.08] bg-white p-6 shadow-2xl"
             >
-              <X className="size-4" />
-            </button>
+              <button
+                type="button"
+                onClick={() => !pending && setOpen(false)}
+                className="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-700"
+                aria-label="닫기"
+              >
+                <X className="size-4" />
+              </button>
 
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-600">
-              <AlertTriangle className="size-6" />
-            </span>
-            <h2
-              id="delete-post-title"
-              className="mt-4 text-lg font-bold text-slate-900"
-            >
-              글을 삭제할까요?
-            </h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-              이 글과 달린 댓글이 모두 삭제돼요. 되돌릴 수 없어요.
-            </p>
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-600">
+                <AlertTriangle className="size-6" />
+              </span>
+              <h2
+                id="delete-post-title"
+                className="mt-4 text-lg font-bold text-slate-900"
+              >
+                글을 삭제할까요?
+              </h2>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                이 글과 달린 댓글이 모두 삭제돼요. 되돌릴 수 없어요.
+              </p>
 
-            {error && (
-              <p className="mt-3 text-sm text-red-600">{error}</p>
-            )}
-
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={pending}
-              onClick={onDelete}
-              className="mt-5 h-11 w-full rounded-2xl text-[15px] font-semibold"
-            >
-              {pending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  삭제 중…
-                </>
-              ) : (
-                <>
-                  <Trash2 className="size-4" />
-                  글 삭제
-                </>
+              {error && (
+                <p className="mt-3 text-sm text-red-600">{error}</p>
               )}
-            </Button>
+
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={pending}
+                onClick={onDelete}
+                className="mt-5 h-11 w-full rounded-2xl text-[15px] font-semibold"
+              >
+                {pending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    삭제 중…
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="size-4" />
+                    글 삭제
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </>
   );

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -8,6 +9,42 @@ import { CommentForm } from "./comment-form";
 import { PostMenu, CommentDeleteButton } from "./post-menu";
 
 const CAN_MANAGE_ROLES = new Set(["president", "treasurer"]);
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * 댓글 본문에서 실제 멘션된 이름(`@이름`)만 라임으로 강조한다.
+ * 후보 이름은 comment_mentions 로 검증된 대상뿐 → 아무 `@단어`나 칠하지 않는다.
+ * 이름 길이 내림차순으로 매칭해 부분 겹침(예: "홍길"이 "홍길동"보다 먼저 잡힘)을 막는다.
+ */
+function renderCommentContent(text: string, names: string[]): ReactNode {
+  const uniq = Array.from(new Set(names.filter(Boolean))).sort(
+    (a, b) => b.length - a.length,
+  );
+  if (uniq.length === 0) return text;
+
+  const pattern = new RegExp(`@(?:${uniq.map(escapeRegExp).join("|")})`, "g");
+  const out: ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = pattern.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    out.push(
+      <span
+        key={key++}
+        className="rounded-md bg-[#84cc16]/15 px-1 py-0.5 font-semibold text-[#4d7c0f]"
+      >
+        {m[0]}
+      </span>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
 
 type PostRow = {
   id: string;
@@ -89,10 +126,60 @@ export default async function PostDetailPage({
 
   const { data: commentData } = await supabase
     .from("comments")
-    .select("id, content, created_at, author_id, profiles(name, avatar_url)")
+    // comment_mentions 가 comments↔profiles 를 정션으로 만들어 `profiles(...)` 임베드가
+    // 모호해진다("more than one relationship") → 작성자 FK(author_id)를 명시해 해소한다.
+    .select("id, content, created_at, author_id, profiles!author_id(name, avatar_url)")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
   const comments = (commentData ?? []) as unknown as CommentRow[];
+
+  // 멘션 후보(@자동완성): 활성 회원. 로스터는 정회원만 조회 가능(RLS is_full_member)이라
+  // 게스트에게는 빈 목록 → 멘션 없이 평범한 입력창이 된다(게스트 회원목록 차단 규칙 유지).
+  const isFullMember = membership.role !== "guest";
+  let mentionCandidates: {
+    userId: string;
+    name: string;
+    avatarUrl: string | null;
+  }[] = [];
+  if (isFullMember) {
+    const { data: memberData } = await supabase
+      .from("club_members")
+      .select("user_id, profiles(name, avatar_url)")
+      .eq("club_id", id)
+      .eq("status", "active");
+    mentionCandidates = (
+      (memberData ?? []) as unknown as {
+        user_id: string;
+        profiles: { name: string | null; avatar_url: string | null } | null;
+      }[]
+    )
+      .filter((m) => m.user_id !== user.id) // 본인 제외
+      .map((m) => ({
+        userId: m.user_id,
+        name: m.profiles?.name ?? "축구인",
+        avatarUrl: m.profiles?.avatar_url ?? null,
+      }));
+  }
+
+  // 표시용 멘션 이름 맵: 댓글별 실제 멘션 대상 이름(검증된 대상만 하이라이트).
+  const mentionNames = new Map<string, string[]>();
+  const commentIds = comments.map((c) => c.id);
+  if (commentIds.length > 0) {
+    const { data: mentionData } = await supabase
+      .from("comment_mentions")
+      .select("comment_id, profiles(name)")
+      .in("comment_id", commentIds);
+    for (const row of (mentionData ?? []) as unknown as {
+      comment_id: string;
+      profiles: { name: string | null } | null;
+    }[]) {
+      const nm = row.profiles?.name;
+      if (!nm) continue;
+      const arr = mentionNames.get(row.comment_id) ?? [];
+      arr.push(nm);
+      mentionNames.set(row.comment_id, arr);
+    }
+  }
 
   const meta = postCategoryMeta(post.category);
   const authorName = post.profiles?.name ?? "축구인";
@@ -190,7 +277,10 @@ export default async function PostDetailPage({
                         </span>
                       </div>
                       <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-600">
-                        {c.content}
+                        {renderCommentContent(
+                          c.content,
+                          mentionNames.get(c.id) ?? [],
+                        )}
                       </p>
                     </div>
                     {canDelete && (
@@ -207,7 +297,11 @@ export default async function PostDetailPage({
           )}
 
           <div className="rounded-2xl border border-slate-900/[0.06] bg-white/80 p-4 shadow-sm backdrop-blur-xl">
-            <CommentForm clubId={id} postId={post.id} />
+            <CommentForm
+              clubId={id}
+              postId={post.id}
+              members={mentionCandidates}
+            />
           </div>
         </section>
       </div>

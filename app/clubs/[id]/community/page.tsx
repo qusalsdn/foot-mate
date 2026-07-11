@@ -106,6 +106,8 @@ export default async function CommunityPage({
 
   // 소속 회원만 커뮤니티를 볼 수 있다 (RLS도 막지만 UX상 클럽 페이지로 되돌린다)
   if (membership?.status !== "active") redirect(`/clubs/${id}`);
+  // 게스트는 조회·댓글만 — 글 작성은 정회원만 (RLS `post write`=is_full_member 와 일치)
+  const canWritePost = membership.role !== "guest";
 
   // 필터: URL 임의값 차단 — 유효 카테고리만 신뢰
   const activeFilter =
@@ -172,13 +174,15 @@ export default async function CommunityPage({
               공지를 확인하고 자유롭게 이야기를 나눠요.
             </p>
           </div>
-          <Link
-            href={`/clubs/${id}/community/new`}
-            className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-br from-[#bef264] to-[#84cc16] px-3.5 py-2 text-sm font-semibold text-[#1a2e05] shadow-lg shadow-[#a3e635]/40 ring-1 ring-inset ring-white/50 transition-all hover:-translate-y-0.5 hover:from-[#d9f99d] hover:to-[#a3e635] hover:shadow-[#a3e635]/50"
-          >
-            <PenSquare className="size-4" />
-            글쓰기
-          </Link>
+          {canWritePost && (
+            <Link
+              href={`/clubs/${id}/community/new`}
+              className="group inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-br from-[#bef264] to-[#84cc16] px-3.5 py-2 text-sm font-semibold text-[#1a2e05] shadow-lg shadow-[#a3e635]/40 ring-1 ring-inset ring-white/50 transition-all hover:-translate-y-0.5 hover:from-[#d9f99d] hover:to-[#a3e635] hover:shadow-[#a3e635]/50"
+            >
+              <PenSquare className="size-4" />
+              글쓰기
+            </Link>
+          )}
         </div>
 
         {/* 카테고리 필터 (JS 없이 링크로 동작) */}

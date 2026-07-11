@@ -20,6 +20,7 @@ import {
   deletePayment,
   setPaymentStatus,
 } from "./actions";
+import { ModalPortal } from "@/components/ui/modal-portal";
 
 export type PayRow = {
   id: string;
@@ -236,72 +237,74 @@ function ConfirmDialog({
   const title = isPeriod ? "이 기간 부과를 삭제할까요?" : "항목을 삭제할까요?";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-        onClick={onCancel}
-        aria-hidden
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="relative w-full max-w-md rounded-3xl border border-slate-900/[0.08] bg-white p-6 shadow-2xl"
-      >
-        <button
-          type="button"
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
           onClick={onCancel}
-          className="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-700"
-          aria-label="닫기"
+          aria-hidden
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="relative w-full max-w-md rounded-3xl border border-slate-900/[0.08] bg-white p-6 shadow-2xl"
         >
-          <X className="size-4" />
-        </button>
-
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-600">
-          <AlertTriangle className="size-6" />
-        </span>
-
-        <h2 className="mt-4 text-lg font-bold text-slate-900">{title}</h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-          {isPeriod ? (
-            <>
-              <b className="font-semibold text-slate-700">{confirm.group.label}</b>{" "}
-              월회비 부과{" "}
-              <b className="font-semibold text-slate-700">
-                {confirm.group.rows.length}건
-              </b>
-              을 모두 삭제합니다. 되돌릴 수 없어요.
-            </>
-          ) : (
-            <>
-              <b className="font-semibold text-slate-700">{confirm.row.name}</b> 님의{" "}
-              <b className="font-semibold text-slate-700">
-                {formatWon(confirm.row.amount)}
-              </b>{" "}
-              항목을 삭제합니다. 되돌릴 수 없어요.
-            </>
-          )}
-        </p>
-
-        <div className="mt-5 flex gap-2.5">
           <button
             type="button"
             onClick={onCancel}
-            disabled={pending}
-            className="h-11 flex-1 cursor-pointer rounded-2xl border border-slate-900/10 bg-white text-[15px] font-semibold text-slate-600 transition-colors hover:bg-slate-900/[0.03] disabled:opacity-50"
+            className="absolute right-4 top-4 flex size-8 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-900/5 hover:text-slate-700"
+            aria-label="닫기"
           >
-            취소
+            <X className="size-4" />
           </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={pending}
-            className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-2xl bg-red-500 text-[15px] font-semibold text-white shadow-md shadow-red-500/25 transition-all hover:-translate-y-0.5 hover:bg-red-600 disabled:pointer-events-none disabled:opacity-60"
-          >
-            {pending && <Loader2 className="size-4 animate-spin" />}
-            삭제
-          </button>
+
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-red-500/10 text-red-600">
+            <AlertTriangle className="size-6" />
+          </span>
+
+          <h2 className="mt-4 text-lg font-bold text-slate-900">{title}</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+            {isPeriod ? (
+              <>
+                <b className="font-semibold text-slate-700">{confirm.group.label}</b>{" "}
+                월회비 부과{" "}
+                <b className="font-semibold text-slate-700">
+                  {confirm.group.rows.length}건
+                </b>
+                을 모두 삭제합니다. 되돌릴 수 없어요.
+              </>
+            ) : (
+              <>
+                <b className="font-semibold text-slate-700">{confirm.row.name}</b> 님의{" "}
+                <b className="font-semibold text-slate-700">
+                  {formatWon(confirm.row.amount)}
+                </b>{" "}
+                항목을 삭제합니다. 되돌릴 수 없어요.
+              </>
+            )}
+          </p>
+
+          <div className="mt-5 flex gap-2.5">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={pending}
+              className="h-11 flex-1 cursor-pointer rounded-2xl border border-slate-900/10 bg-white text-[15px] font-semibold text-slate-600 transition-colors hover:bg-slate-900/[0.03] disabled:opacity-50"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={pending}
+              className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-2xl bg-red-500 text-[15px] font-semibold text-white shadow-md shadow-red-500/25 transition-all hover:-translate-y-0.5 hover:bg-red-600 disabled:pointer-events-none disabled:opacity-60"
+            >
+              {pending && <Loader2 className="size-4 animate-spin" />}
+              삭제
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

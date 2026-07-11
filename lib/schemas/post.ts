@@ -36,5 +36,8 @@ export const commentSchema = z.object({
     .trim()
     .min(1, "댓글을 입력해주세요")
     .max(1000, "댓글은 1,000자 이하로 입력해주세요"),
+  // 멘션 대상 사용자 id 목록. 본문의 `@이름` 토큰과 대응한다(이름이 유일하지 않아 id로 특정).
+  // 실제 저장은 서버가 "그 클럽 활성 회원"으로 필터링하고, RLS `cm write` 가 한 번 더 강제한다.
+  mentionUserIds: z.array(z.string().uuid()).optional().default([]),
 });
 export type CommentInput = z.infer<typeof commentSchema>;
