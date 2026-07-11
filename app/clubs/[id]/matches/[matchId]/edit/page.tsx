@@ -30,13 +30,20 @@ export default async function EditMatchPage({
     redirect(`/clubs/${id}/matches/${matchId}`);
   }
 
-  const { data: match } = await supabase
-    .from("matches")
-    .select(
-      "id, club_id, title, match_date, vote_deadline, type, opponent, location_name, capacity, fee",
-    )
-    .eq("id", matchId)
-    .single();
+  const [{ data: match }, { data: teamDefs }] = await Promise.all([
+    supabase
+      .from("matches")
+      .select(
+        "id, club_id, title, match_date, vote_deadline, type, opponent, location_name, capacity, fee",
+      )
+      .eq("id", matchId)
+      .single(),
+    supabase
+      .from("match_team_defs")
+      .select("team, name")
+      .eq("match_id", matchId)
+      .order("team", { ascending: true }),
+  ]);
   if (!match || match.club_id !== id) notFound();
 
   const initial: MatchFormValues = {
@@ -50,6 +57,10 @@ export default async function EditMatchPage({
     locationName: match.location_name ?? "",
     capacity: match.capacity != null ? String(match.capacity) : "",
     fee: match.fee ? String(match.fee) : "",
+    // 친선전은 team 1 = 우리팀(자동)이라 폼에는 상대팀(team>1)만 싣는다.
+    teams: (teamDefs ?? [])
+      .filter((t) => match.type !== "friendly" || (t.team as number) > 1)
+      .map((t) => ({ name: t.name as string })),
   };
 
   return (

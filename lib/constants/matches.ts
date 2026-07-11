@@ -88,3 +88,41 @@ export type AttendStatus = keyof typeof ATTEND_LABELS;
 export function attendLabel(s: string): string {
   return ATTEND_LABELS[s as AttendStatus] ?? s;
 }
+
+/**
+ * 자체전 팀 편성(match_teams). team 번호는 1~4.
+ * 라벨은 팀 수와 무관하게 항상 `N팀`으로 통일.
+ * 팀별 뱃지·점 색은 참석 명단 accent 팔레트와 결이 맞게 구성.
+ */
+export const MAX_TEAMS = 4;
+
+export function teamLabel(team: number): string {
+  return `${team}팀`;
+}
+
+/** 팀별 색: dot(점), badge(테두리+배경+텍스트), swatch(버튼 강조) */
+export const TEAM_STYLES: Record<
+  number,
+  { dot: string; badge: string; swatch: string }
+> = {
+  1: {
+    dot: "bg-sky-500",
+    badge: "border-sky-500/25 bg-sky-500/10 text-sky-600",
+    swatch: "border-sky-500/40 bg-sky-500/12 text-sky-600",
+  },
+  2: {
+    dot: "bg-slate-400",
+    badge: "border-slate-900/12 bg-slate-900/[0.05] text-slate-600",
+    swatch: "border-slate-400/50 bg-slate-500/10 text-slate-600",
+  },
+  3: {
+    dot: "bg-[#84cc16]",
+    badge: "border-[#84cc16]/30 bg-[#84cc16]/12 text-[#4d7c0f]",
+    swatch: "border-[#84cc16]/40 bg-[#84cc16]/12 text-[#4d7c0f]",
+  },
+  4: {
+    dot: "bg-amber-400",
+    badge: "border-amber-500/25 bg-amber-500/10 text-amber-600",
+    swatch: "border-amber-500/40 bg-amber-500/12 text-amber-600",
+  },
+};
