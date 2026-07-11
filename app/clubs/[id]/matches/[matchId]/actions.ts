@@ -8,6 +8,7 @@ import {
   resultSchema,
   teamsSchema,
 } from "@/lib/schemas/match";
+import type { AttendStatus, MatchStatus } from "@/lib/constants/matches";
 
 export type ActionResult = { error?: string };
 
@@ -27,7 +28,7 @@ function revalidateMatch(clubId: string, matchId: string) {
 export async function voteAttendance(
   clubId: string,
   matchId: string,
-  status: string,
+  status: AttendStatus,
 ): Promise<ActionResult> {
   if (!VOTABLE.has(status)) return { error: "잘못된 응답입니다" };
 
@@ -230,7 +231,7 @@ export async function saveTeams(
 export async function setMatchStatus(
   clubId: string,
   matchId: string,
-  status: string,
+  status: MatchStatus,
 ): Promise<ActionResult> {
   if (!SETTABLE.has(status)) return { error: "잘못된 상태입니다" };
 

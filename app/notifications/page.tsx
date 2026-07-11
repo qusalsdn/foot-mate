@@ -8,16 +8,6 @@ import { NotificationsRealtime } from "@/components/notifications-realtime";
 import { NotificationItem } from "./notification-item";
 import { markAllNotificationsRead } from "./actions";
 
-type NotiRow = {
-  id: string;
-  type: string;
-  title: string;
-  body: string | null;
-  link: string | null;
-  read_at: string | null;
-  created_at: string;
-};
-
 export default async function NotificationsPage() {
   const supabase = await createClient();
   const {
@@ -31,7 +21,7 @@ export default async function NotificationsPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50);
-  const notis = (data ?? []) as unknown as NotiRow[];
+  const notis = data ?? [];
   const unreadCount = notis.filter((n) => !n.read_at).length;
 
   return (

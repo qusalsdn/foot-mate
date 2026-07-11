@@ -249,7 +249,7 @@ export default async function FinancePage({
       .eq("club_id", id)
       .order("period", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
-    const mine = (data ?? []) as unknown as MyPay[];
+    const mine = data ?? [];
     const unpaidTotal = mine
       .filter((p) => p.status === "unpaid")
       .reduce((sum, p) => sum + p.amount, 0);
@@ -288,7 +288,7 @@ export default async function FinancePage({
     .eq("club_id", id)
     .order("period", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
-  const payRows = (payData ?? []) as unknown as Omit<RawPay, "profiles">[];
+  const payRows = payData ?? [];
 
   // 프로필(이름·아바타)은 별도 조회 후 매핑한다.
   // payments엔 profiles로 가는 FK가 둘(user_id·created_by)이라 profiles(...) 임베드가

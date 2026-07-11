@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ModalPortal } from "@/components/ui/modal-portal";
 import { deleteMatch, setMatchStatus } from "./actions";
+import type { MatchStatus } from "@/lib/constants/matches";
 
 function DeleteConfirmButton() {
   const { pending } = useFormStatus();
@@ -54,7 +55,7 @@ export function MatchManage({
   const [open, setOpen] = useState(false);
   const deleteMatchWithId = deleteMatch.bind(null, clubId, matchId);
 
-  function change(next: string) {
+  function change(next: MatchStatus) {
     startTransition(async () => {
       await setMatchStatus(clubId, matchId, next);
     });

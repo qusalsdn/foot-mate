@@ -15,6 +15,15 @@ export function roleLabel(role: string): string {
 }
 
 /**
+ * 역할별 뱃지 색 (회장·총무 = 라임 강조, 나머지는 중립 폴백).
+ * 홈·클럽 상세·회원 관리 UI가 공유한다. 미지정 역할은 호출부에서 중립 폴백 처리.
+ */
+export const ROLE_BADGE: Record<string, string> = {
+  president: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
+  treasurer: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
+};
+
+/**
  * 역할 변경(changeMemberRole)으로 지정 가능한 역할 화이트리스트.
  * president 제외 — 회장직은 회장 이양(transferPresidency)으로만 넘긴다.
  * guest 제외 — 게스트는 매치 초대 전용이라 역할 드롭다운으로 임명하지 않는다.

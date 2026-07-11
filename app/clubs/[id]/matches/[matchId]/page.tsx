@@ -20,18 +20,6 @@ type Attendance = {
   responded_at: string;
   profiles: Profile | null;
 };
-type StatRow = {
-  user_id: string;
-  goals: number;
-  assists: number;
-  profiles: Profile | null;
-};
-type TeamRow = { user_id: string; team: number };
-type Member = {
-  user_id: string;
-  role: string;
-  profiles: Profile | null;
-};
 
 function Roster({
   title,
@@ -158,29 +146,14 @@ export default async function MatchDetailPage({
     supabase.from("match_quarter_stats").select("quarter, user_id, goals, assists").eq("match_id", matchId),
   ]);
 
-  const attendances = (attData ?? []) as unknown as Attendance[];
-  const stats = (statData ?? []) as unknown as StatRow[];
-  const members = (memberData ?? []) as unknown as Member[];
-  const teamRows = (teamData ?? []) as unknown as TeamRow[];
-  const teamScoreRows = (teamScoreData ?? []) as unknown as {
-    team: number;
-    score: number;
-  }[];
-  const teamDefRows = (teamDefData ?? []) as unknown as {
-    team: number;
-    name: string;
-  }[];
-  const quarterScoreRows = (quarterScoreData ?? []) as unknown as {
-    quarter: number;
-    team: number;
-    score: number;
-  }[];
-  const quarterStatRows = (quarterStatData ?? []) as unknown as {
-    quarter: number;
-    user_id: string;
-    goals: number;
-    assists: number;
-  }[];
+  const attendances = attData ?? [];
+  const stats = statData ?? [];
+  const members = memberData ?? [];
+  const teamRows = teamData ?? [];
+  const teamScoreRows = teamScoreData ?? [];
+  const teamDefRows = teamDefData ?? [];
+  const quarterScoreRows = quarterScoreData ?? [];
+  const quarterStatRows = quarterStatData ?? [];
 
   const attending = attendances.filter((a) => a.status === "attending" && !a.is_waitlist);
   const waitlist = attendances.filter((a) => a.status === "attending" && a.is_waitlist);
