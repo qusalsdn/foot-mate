@@ -4,6 +4,13 @@ import { useState, useTransition } from "react";
 import { AlertCircle, Check, Loader2, Pencil, Shuffle, Users2 } from "lucide-react";
 import { saveTeams } from "./actions";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { TEAM_STYLES } from "@/lib/constants/matches";
 
 export type TeamPlayer = {
@@ -249,19 +256,31 @@ export function TeamEditor({
                       className={`size-2.5 shrink-0 rounded-full ${TEAM_STYLES[cur].dot}`}
                     />
                   )}
-                  <select
+                  <Select
                     value={cur}
-                    onChange={(e) => setTeam(p.userId, Number(e.target.value))}
-                    aria-label={`${p.name} 팀 선택`}
-                    className="h-9 cursor-pointer rounded-lg border border-slate-900/10 bg-white/70 pl-2.5 pr-7 text-sm font-medium text-slate-700 outline-none transition-colors focus:border-[#84cc16] focus:ring-2 focus:ring-[#84cc16]/25"
+                    onValueChange={(v) => setTeam(p.userId, Number(v))}
                   >
-                    <option value={0}>미배정</option>
-                    {teams.map((t) => (
-                      <option key={t.team} value={t.team}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      aria-label={`${p.name} 팀 선택`}
+                      className="h-9 w-auto shrink-0 gap-1 rounded-lg pl-2.5 pr-2 font-medium text-slate-700"
+                    >
+                      <SelectValue>
+                        {(v: number) =>
+                          v === 0
+                            ? "미배정"
+                            : (teams.find((t) => t.team === v)?.name ?? "미배정")
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={0}>미배정</SelectItem>
+                      {teams.map((t) => (
+                        <SelectItem key={t.team} value={t.team}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </li>
               );
             })}

@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertCircle,
   CalendarClock,
-  ChevronDown,
   Hourglass,
   MapPin,
   Plus,
@@ -31,6 +30,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { DateTimeField } from "@/components/ui/datetime-field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // 폼 값은 전부 문자열(입력 그대로). 숫자 강제·검증은 zod(matchSchema)가 담당.
 export type MatchFormValues = {
@@ -150,10 +157,12 @@ export function MatchForm({
                 일시
               </FormLabel>
               <FormControl>
-                <Input
-                  type="datetime-local"
-                  className={`${inputClass} [color-scheme:light]`}
-                  {...field}
+                <DateTimeField
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  placeholder="경기 일시 선택"
                 />
               </FormControl>
               <FormMessage />
@@ -174,10 +183,12 @@ export function MatchForm({
                 </span>
               </FormLabel>
               <FormControl>
-                <Input
-                  type="datetime-local"
-                  className={`${inputClass} [color-scheme:light]`}
-                  {...field}
+                <DateTimeField
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  placeholder="마감 일시 선택"
                 />
               </FormControl>
               <FormMessage />
@@ -195,23 +206,26 @@ export function MatchForm({
                 유형
               </FormLabel>
               <FormControl>
-                <div className="relative">
-                  <select
-                    {...field}
-                    onChange={(e) => {
-                      field.onChange(e);
-                      handleTypeChange(e.target.value);
-                    }}
-                    className={`${inputClass} w-full appearance-none pl-3.5 pr-9 text-sm text-slate-900`}
-                  >
+                <Select
+                  value={field.value}
+                  onValueChange={(v) => {
+                    field.onChange(v);
+                    handleTypeChange(v as string);
+                  }}
+                >
+                  <SelectTrigger onBlur={field.onBlur}>
+                    <SelectValue placeholder="유형 선택">
+                      {(v: string) => MATCH_TYPE_LABELS[v as keyof typeof MATCH_TYPE_LABELS]}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
                     {MATCH_TYPES.map((t) => (
-                      <option key={t} value={t}>
+                      <SelectItem key={t} value={t}>
                         {MATCH_TYPE_LABELS[t]}
-                      </option>
+                      </SelectItem>
                     ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                </div>
+                  </SelectContent>
+                </Select>
               </FormControl>
               <FormMessage />
             </FormItem>

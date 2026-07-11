@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import {
-  AlertTriangle,
-  ChevronDown,
-  Crown,
-  Loader2,
-  UserMinus,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Crown, Loader2, UserMinus, X } from "lucide-react";
 import {
   ASSIGNABLE_ROLES,
   groupRoster,
@@ -20,6 +13,13 @@ import {
   removeMember,
   transferPresidency,
 } from "./actions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type RosterMember = {
   user_id: string;
@@ -108,30 +108,31 @@ export function MemberManager({
 
               {/* 역할: 편집 가능하면 드롭다운, 아니면 뱃지 */}
               {canEditRole ? (
-                <label className="relative shrink-0">
-                  <span className="sr-only">{m.name} 역할</span>
-                  <select
-                    value={m.role}
-                    disabled={pending}
-                    onChange={(e) =>
-                      startTransition(() =>
-                        changeMemberRole(
-                          clubId,
-                          m.user_id,
-                          e.target.value as AssignableRole,
-                        ),
-                      )
-                    }
-                    className="h-8 cursor-pointer appearance-none rounded-full border border-slate-900/10 bg-white pr-8 pl-3 text-xs font-semibold text-slate-600 outline-none transition-colors focus:border-[#84cc16]/50 focus:ring-2 focus:ring-[#84cc16]/15 disabled:opacity-50"
+                <Select
+                  value={m.role}
+                  disabled={pending}
+                  onValueChange={(v) =>
+                    startTransition(() =>
+                      changeMemberRole(clubId, m.user_id, v as AssignableRole),
+                    )
+                  }
+                >
+                  <SelectTrigger
+                    aria-label={`${m.name} 역할`}
+                    className="h-8 w-auto shrink-0 gap-1 rounded-full border-slate-900/10 bg-white pl-3 pr-2.5 text-xs font-semibold text-slate-600"
                   >
+                    <SelectValue>
+                      {(v: string) => roleLabel(v as AssignableRole)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
                     {ASSIGNABLE_ROLES.map((r) => (
-                      <option key={r} value={r}>
+                      <SelectItem key={r} value={r}>
                         {roleLabel(r)}
-                      </option>
+                      </SelectItem>
                     ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
-                </label>
+                  </SelectContent>
+                </Select>
               ) : (
                 <span
                   className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${

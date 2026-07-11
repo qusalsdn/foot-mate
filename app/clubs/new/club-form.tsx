@@ -3,14 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  AlertCircle,
-  ArrowRight,
-  ChevronDown,
-  MapPin,
-  Shield,
-  Text,
-} from "lucide-react";
+import { AlertCircle, ArrowRight, MapPin, Shield, Text } from "lucide-react";
 
 import { clubSchema, type ClubInput } from "@/lib/schemas/club";
 import {
@@ -30,6 +23,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const inputClass =
   "h-11 rounded-xl border-slate-900/10 bg-white/70 transition-colors focus-visible:border-[#84cc16] focus-visible:ring-[#84cc16]/25";
@@ -97,46 +97,46 @@ export function ClubForm() {
               <FormControl>
                 <div className="grid grid-cols-2 gap-2">
                   {/* 시/도 */}
-                  <div className="relative">
-                    <select
-                      aria-label="시/도"
-                      value={sido}
-                      onChange={(e) => handleSido(e.target.value)}
-                      className={`${inputClass} w-full appearance-none pl-3.5 pr-9 text-sm ${
-                        sido ? "text-slate-900" : "text-slate-400"
-                      }`}
-                    >
-                      <option value="">시/도</option>
+                  <Select
+                    value={sido || null}
+                    onValueChange={(v) => handleSido(v as string)}
+                  >
+                    <SelectTrigger aria-label="시/도">
+                      <SelectValue
+                        placeholder={<span className="text-slate-400">시/도</span>}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
                       {SIDO_LIST.map((s) => (
-                        <option key={s} value={s} className="text-slate-900">
+                        <SelectItem key={s} value={s}>
                           {s}
-                        </option>
+                        </SelectItem>
                       ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                  </div>
+                    </SelectContent>
+                  </Select>
                   {/* 구/군 (시/도 선택 후 활성) */}
-                  <div className="relative">
-                    <select
-                      aria-label="구/군"
-                      value={gu}
-                      onChange={(e) => handleGu(e.target.value)}
-                      disabled={districts.length === 0}
-                      className={`${inputClass} w-full appearance-none pl-3.5 pr-9 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${
-                        gu ? "text-slate-900" : "text-slate-400"
-                      }`}
-                    >
-                      <option value="">
-                        {sido && districts.length === 0 ? "구/군 없음" : "구/군"}
-                      </option>
+                  <Select
+                    value={gu || null}
+                    onValueChange={(v) => handleGu(v as string)}
+                    disabled={districts.length === 0}
+                  >
+                    <SelectTrigger aria-label="구/군">
+                      <SelectValue
+                        placeholder={
+                          <span className="text-slate-400">
+                            {sido && districts.length === 0 ? "구/군 없음" : "구/군"}
+                          </span>
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
                       {districts.map((d) => (
-                        <option key={d} value={d} className="text-slate-900">
+                        <SelectItem key={d} value={d}>
                           {d}
-                        </option>
+                        </SelectItem>
                       ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                  </div>
+                    </SelectContent>
+                  </Select>
                 </div>
               </FormControl>
               <FormMessage />
