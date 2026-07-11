@@ -131,7 +131,8 @@ pnpm dlx shadcn@latest add <name> # UI 컴포넌트 추가
 
 ## 아직 안 만든 것 (TODO)
 
-- 기능 페이지 (미구현): 커뮤니티(게시판·댓글). ※ 로그인·클럽 생성/목록/상세/가입, **매치(일정·참석 투표·팀 편성·결과·쿼터 기록)**, 회비/정산, 알림은 구현 완료
+- 기능 페이지: 커뮤니티는 **텍스트 게시판(공지·자유) + 댓글까지 구현 완료**. 갤러리(이미지 게시판)만 미구현 — `post_category` enum엔 `gallery`가 있으나 Storage 배선이 필요해 작성 폼에서 제외했고, 목록·상세는 렌더만 지원. ※ 로그인·클럽 생성/목록/상세/가입, **매치(일정·참석 투표·팀 편성·결과·쿼터 기록)**, 회비/정산, 알림, **커뮤니티(게시판·댓글)** 는 구현 완료
+  - 커뮤니티 라우트: `/clubs/[id]/community`(목록, 카테고리 필터) · `/new`(작성, 공지는 회장·총무·감독·코치만) · `/[postId]`(상세+댓글) · `/[postId]/edit`(수정, 작성자 본인 또는 회장·총무). 스키마는 `lib/schemas/post.ts`, 카테고리 라벨·메타는 `lib/constants/community.ts`. 공지 등록→회원 전원 / 새 댓글→글 작성자 알림은 트리거(`*_community_notify.sql`의 `on_post_created`/`on_comment_created`, `notify_users` 경유).
 - 매치 라우트: `/clubs/[id]/matches`(목록) · `/new`(생성, 회장·총무·감독·코치) · `/[matchId]`(상세+참석투표+팀 편성+결과·기록) · `/[matchId]/edit`(수정). 날짜는 `lib/date.ts`(KST 고정), 라벨은 `lib/constants/matches.ts`, 스키마는 `lib/schemas/match.ts`. 참석 투표는 `vote_attendance` RPC(정원·대기자 자동 처리) 경유. 팀 편성·결과 모델은 위 "매치 도메인" 섹션 참고.
 - DB 타입 생성 (`supabase gen types typescript`) → 클라이언트에 제네릭으로 물려 쿼리 타입 안전성 확보 (현재 쿼리는 untyped, `as unknown as` 캐스팅 사용 중)
 - ~~PWA 배선~~ → 완료. `manifest.webmanifest` + 서비스워커 등록(`components/push/service-worker-register`) + `layout.tsx`의 apple-touch-icon link. 아이콘은 `public/app-icon-*` · `apple-touch-icon.png`(네온 다크).

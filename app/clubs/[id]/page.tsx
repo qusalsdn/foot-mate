@@ -56,11 +56,6 @@ type RosterRow = {
   profiles: { name: string | null; avatar_url: string | null } | null;
 };
 
-// 곧 추가될 기능 미리보기 타일 (매치·회비는 구현 완료 → 별도 진입 카드로 노출)
-const FEATURES = [
-  { icon: MessageSquare, label: "커뮤니티", desc: "게시판·댓글" },
-];
-
 export default async function ClubDetailPage({
   params,
   searchParams,
@@ -296,6 +291,25 @@ export default async function ClubDetailPage({
           </Link>
         )}
 
+        {/* 커뮤니티 진입 (활성 회원 — 게스트 포함, RLS도 is_club_member) */}
+        {isActiveMember && (
+          <Link
+            href={`/clubs/${club.id}/community`}
+            className="group mt-3 flex items-center gap-4 overflow-hidden rounded-2xl border border-slate-900/[0.06] bg-white/80 p-4 shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-[#84cc16]/40 hover:shadow-lg hover:shadow-[#84cc16]/10 sm:p-5"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#84cc16]/12 text-[#4d7c0f]">
+              <MessageSquare className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-800">커뮤니티</p>
+              <p className="truncate text-xs text-slate-400">
+                공지 · 자유글 · 댓글
+              </p>
+            </div>
+            <ArrowRight className="size-5 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-[#65a30d]" />
+          </Link>
+        )}
+
         {/* 가입 신청 승인 대기 (회장·총무만) */}
         {canManage && (
           <PendingRequests clubId={club.id} members={pendingMembers} />
@@ -389,32 +403,6 @@ export default async function ClubDetailPage({
             )}
           </section>
         )}
-
-        {/* 곧 추가될 기능 미리보기 */}
-        <section className="mt-6">
-          <h2 className="mb-3 px-1 text-sm font-bold text-slate-700">
-            클럽 기능{" "}
-            <span className="font-medium text-slate-400">· 곧 추가돼요</span>
-          </h2>
-          <ul className="grid grid-cols-2 gap-3">
-            {FEATURES.map((f) => (
-              <li
-                key={f.label}
-                className="flex items-center gap-3 rounded-2xl border border-dashed border-slate-900/[0.1] bg-white/50 px-4 py-3.5 backdrop-blur-sm"
-              >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#84cc16]/12 text-[#4d7c0f]">
-                  <f.icon className="size-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-700">
-                    {f.label}
-                  </p>
-                  <p className="truncate text-xs text-slate-400">{f.desc}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
 
         {/* 위험 구역 (회장 전용) */}
         {isOwner && (

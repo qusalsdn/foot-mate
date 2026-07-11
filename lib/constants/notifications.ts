@@ -2,6 +2,8 @@ import {
   BadgeCheck,
   Bell,
   CalendarPlus,
+  Megaphone,
+  MessageSquare,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -22,6 +24,14 @@ const NOTIFICATION_META: Record<string, { icon: LucideIcon; accent: string }> = 
   match_created: {
     icon: CalendarPlus,
     accent: "bg-[#84cc16]/12 text-[#4d7c0f]",
+  },
+  post_notice: {
+    icon: Megaphone,
+    accent: "bg-[#84cc16]/12 text-[#4d7c0f]",
+  },
+  comment_added: {
+    icon: MessageSquare,
+    accent: "bg-slate-900/[0.04] text-slate-500",
   },
 };
 
