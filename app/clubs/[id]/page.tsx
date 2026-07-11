@@ -338,25 +338,30 @@ export default async function ClubDetailPage({
                         return (
                           <li
                             key={m.user_id}
-                            className="flex items-center gap-3 rounded-2xl border border-slate-900/[0.06] bg-white/70 px-3.5 py-2.5 shadow-sm backdrop-blur-xl"
+                            className="flex items-center gap-3 rounded-2xl border border-slate-900/[0.06] bg-white/70 px-3.5 py-2.5 shadow-sm backdrop-blur-xl transition-colors hover:border-[#84cc16]/40"
                           >
-                            {avatar ? (
-                              // 카카오 CDN 호스트가 유동적이라 next/image 대신 일반 img 사용
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={avatar}
-                                alt={name}
-                                referrerPolicy="no-referrer"
-                                className="size-9 shrink-0 rounded-full object-cover ring-1 ring-slate-900/10"
-                              />
-                            ) : (
-                              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#84cc16]/15 text-sm font-bold text-[#4d7c0f]">
-                                {name.charAt(0)}
+                            <Link
+                              href={`/clubs/${club.id}/members/${m.user_id}`}
+                              className="flex min-w-0 flex-1 items-center gap-3"
+                            >
+                              {avatar ? (
+                                // 카카오 CDN 호스트가 유동적이라 next/image 대신 일반 img 사용
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={avatar}
+                                  alt={name}
+                                  referrerPolicy="no-referrer"
+                                  className="size-9 shrink-0 rounded-full object-cover ring-1 ring-slate-900/10"
+                                />
+                              ) : (
+                                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#84cc16]/15 text-sm font-bold text-[#4d7c0f]">
+                                  {name.charAt(0)}
+                                </span>
+                              )}
+                              <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">
+                                {name}
                               </span>
-                            )}
-                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">
-                              {name}
-                            </span>
+                            </Link>
                             <span
                               className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
                                 ROLE_BADGE[m.role] ??
