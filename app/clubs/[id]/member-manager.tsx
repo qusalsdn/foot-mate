@@ -6,6 +6,7 @@ import {
   ASSIGNABLE_ROLES,
   groupRoster,
   roleLabel,
+  ROLE_BADGE,
   type AssignableRole,
 } from "@/lib/constants/roles";
 import {
@@ -27,12 +28,6 @@ export type RosterMember = {
   role: string;
   name: string;
   avatar_url: string | null;
-};
-
-// 역할별 뱃지 색 (회장·총무 = 라임 강조) — 페이지 로스터와 동일 팔레트
-const ROLE_BADGE: Record<string, string> = {
-  president: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
-  treasurer: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
 };
 
 type Confirm =

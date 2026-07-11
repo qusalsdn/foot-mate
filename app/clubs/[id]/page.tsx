@@ -10,35 +10,14 @@ import {
   Wallet,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { roleLabel, groupRoster } from "@/lib/constants/roles";
+import { roleLabel, groupRoster, ROLE_BADGE } from "@/lib/constants/roles";
+import { gradientFor } from "@/lib/constants/avatars";
 import { joinClub } from "./actions";
 import { DeleteClubButton } from "./delete-club-button";
 import { PendingRequests, type PendingMember } from "./pending-requests";
 import { MemberManager, type RosterMember } from "./member-manager";
 import { Button } from "@/components/ui/button";
 import { PageBackBar } from "@/components/page-back-bar";
-
-// 클럽 이름 → 안정적인 파스텔 그라디언트 (id 해시 기반) — 홈 화면과 동일 팔레트
-const AVATAR_GRADIENTS = [
-  "from-[#a3e635] to-[#22c55e]",
-  "from-[#34d399] to-[#0ea5e9]",
-  "from-[#facc15] to-[#84cc16]",
-  "from-[#38bdf8] to-[#6366f1]",
-  "from-[#fb923c] to-[#f43f5e]",
-  "from-[#c084fc] to-[#6366f1]",
-];
-
-function gradientFor(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
-}
-
-// 역할별 뱃지 색 (회장·총무 = 라임 강조, 나머지는 중립)
-const ROLE_BADGE: Record<string, string> = {
-  president: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
-  treasurer: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
-};
 
 // 로스터 정렬용 역할 우선순위
 const ROLE_ORDER: Record<string, number> = {

@@ -3,7 +3,8 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { CalendarDays, ChevronRight, Clock, Compass, MapPin, Plus, Search, Users, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { roleLabel } from "@/lib/constants/roles";
+import { roleLabel, ROLE_BADGE } from "@/lib/constants/roles";
+import { gradientFor } from "@/lib/constants/avatars";
 import { formatKstDate, formatKstTime } from "@/lib/date";
 import { SIDO_LIST, districtsOf, formatRegion, parseRegion, sidoOrder } from "@/lib/constants/regions";
 import { NotificationBell } from "@/components/notification-bell";
@@ -18,22 +19,6 @@ type Club = {
   description: string | null;
 };
 
-// 클럽 이름 → 안정적인 파스텔 그라디언트 (id 해시 기반)
-const AVATAR_GRADIENTS = [
-  "from-[#a3e635] to-[#22c55e]",
-  "from-[#34d399] to-[#0ea5e9]",
-  "from-[#facc15] to-[#84cc16]",
-  "from-[#38bdf8] to-[#6366f1]",
-  "from-[#fb923c] to-[#f43f5e]",
-  "from-[#c084fc] to-[#6366f1]",
-];
-
-function gradientFor(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
-}
-
 function ClubAvatar({ id, name, size = "md" }: { id: string; name: string; size?: "md" | "lg" }) {
   const dim = size === "lg" ? "size-12 text-lg" : "size-10 text-base";
   return (
@@ -44,12 +29,6 @@ function ClubAvatar({ id, name, size = "md" }: { id: string; name: string; size?
     </span>
   );
 }
-
-// 역할별 뱃지 색 (회장·총무 = 라임 강조, 나머지는 중립)
-const ROLE_BADGE: Record<string, string> = {
-  president: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
-  treasurer: "border-[#84cc16]/30 bg-[#84cc16]/10 text-[#4d7c0f]",
-};
 
 type UpcomingMatch = {
   id: string;
