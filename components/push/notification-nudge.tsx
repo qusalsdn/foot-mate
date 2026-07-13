@@ -48,9 +48,7 @@ export function NotificationNudge({ userId }: { userId: string }) {
 
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-slate-800">알림 받기</p>
-        <p className="text-xs text-slate-400">
-          회비·매치 소식을 이 기기로 바로 받아보세요.
-        </p>
+        <p className="text-xs text-slate-400">회비·매치·공지사항 소식을 이 기기로 바로 받아보세요.</p>
       </div>
 
       <button

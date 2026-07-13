@@ -3,9 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { postSchema, commentSchema } from "@/lib/schemas/post";
+import { POST_IMAGE_BUCKET } from "@/lib/constants/community";
 
 export type MutationResult = { error?: string };
+
+/**
+ * 갤러리 이미지 스토리지 정리(부수효과). 게시글 삭제/수정으로 참조가 끊긴 경로를 제거한다.
+ * 삭제자가 작성자가 아닐 수 있어(운영진) RLS 대신 admin 클라이언트로 지운다. 실패해도 무시 —
+ * 고아 파일이 남을 뿐 데이터 일관성엔 영향 없다.
+ */
+async function removeStoredImages(paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  try {
+    await createAdminClient().storage.from(POST_IMAGE_BUCKET).remove(paths);
+  } catch {
+    // best-effort — 정리 실패는 조용히 무시
+  }
+}
 
 /**
  * 게시글 작성. 권한은 RLS `post write` 가 강제:
@@ -26,7 +42,7 @@ export async function createPost(
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다" };
 
-  const { category, title, content } = parsed.data;
+  const { category, title, content, images } = parsed.data;
   const { data, error } = await supabase
     .from("posts")
     .insert({
@@ -35,6 +51,7 @@ export async function createPost(
       category,
       title,
       content: content || null,
+      images,
     })
     .select("id")
     .single();
@@ -65,10 +82,19 @@ export async function updatePost(
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다" };
 
-  const { category, title, content } = parsed.data;
+  const { category, title, content, images } = parsed.data;
+
+  // 기존 이미지 목록(정리 대상 판별용). 실패해도 수정 자체는 진행한다.
+  const { data: prev } = await supabase
+    .from("posts")
+    .select("images")
+    .eq("id", postId)
+    .eq("club_id", clubId)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("posts")
-    .update({ category, title, content: content || null })
+    .update({ category, title, content: content || null, images })
     .eq("id", postId)
     .eq("club_id", clubId)
     .select("id")
@@ -77,6 +103,11 @@ export async function updatePost(
   if (error || !data) {
     return { error: "글을 수정하지 못했어요. 권한을 확인해주세요." };
   }
+
+  // 이번 수정으로 참조가 끊긴 이미지(기존 - 최종)를 스토리지에서 정리한다.
+  const kept = new Set(images);
+  const orphaned = (prev?.images ?? []).filter((p) => !kept.has(p));
+  await removeStoredImages(orphaned);
 
   revalidatePath(`/clubs/${clubId}/community`);
   revalidatePath(`/clubs/${clubId}/community/${postId}`);
@@ -97,12 +128,15 @@ export async function deletePost(
     .delete()
     .eq("id", postId)
     .eq("club_id", clubId)
-    .select("id")
+    .select("id, images")
     .maybeSingle();
 
   if (error || !data) {
     return { error: "삭제하지 못했어요. 권한을 확인해주세요." };
   }
+
+  // 갤러리 이미지 스토리지 정리(부수효과).
+  await removeStoredImages(data.images ?? []);
 
   revalidatePath(`/clubs/${clubId}/community`);
   redirect(`/clubs/${clubId}/community`);

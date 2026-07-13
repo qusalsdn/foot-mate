@@ -1,9 +1,14 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatKst, formatRelative } from "@/lib/date";
-import { postCategoryLabel, postCategoryMeta } from "@/lib/constants/community";
+import {
+  postCategoryLabel,
+  postCategoryMeta,
+  postImageUrl,
+} from "@/lib/constants/community";
 import { PageBackBar } from "@/components/page-back-bar";
 import { CommentForm } from "./comment-form";
 import { PostMenu, CommentDeleteButton } from "./post-menu";
@@ -76,6 +81,26 @@ function Avatar({
   );
 }
 
+/** 작성자 아바타·이름 묶음. 정회원 뷰어에게만 프로필로 링크(게스트는 회원 조회 차단). */
+function AuthorLink({
+  enabled,
+  href,
+  className,
+  children,
+}: {
+  enabled: boolean;
+  href: string;
+  className: string;
+  children: ReactNode;
+}) {
+  if (!enabled) return <div className={className}>{children}</div>;
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 export default async function PostDetailPage({
   params,
 }: {
@@ -99,12 +124,13 @@ export default async function PostDetailPage({
 
   const { data: postData } = await supabase
     .from("posts")
-    .select("id, category, title, content, created_at, author_id, profiles(name, avatar_url)")
+    .select("id, category, title, content, images, created_at, author_id, profiles(name, avatar_url)")
     .eq("id", postId)
     .eq("club_id", id)
     .maybeSingle();
   if (!postData) notFound();
   const post = postData;
+  const images = post.images ?? [];
 
   const { data: commentData } = await supabase
     .from("comments")
@@ -197,7 +223,11 @@ export default async function PostDetailPage({
             {post.title}
           </h1>
 
-          <div className="mt-3 flex items-center gap-2.5">
+          <AuthorLink
+            enabled={isFullMember}
+            href={`/clubs/${id}/members/${post.author_id}`}
+            className="mt-3 flex w-fit items-center gap-2.5 rounded-full py-1 pr-3 transition-colors hover:bg-slate-900/[0.03]"
+          >
             <Avatar name={authorName} url={post.profiles?.avatar_url ?? null} />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-slate-700">
@@ -207,7 +237,22 @@ export default async function PostDetailPage({
                 {formatKst(post.created_at)}
               </p>
             </div>
-          </div>
+          </AuthorLink>
+
+          {images.length > 0 && (
+            <div className="mt-6 grid gap-3">
+              {images.map((path, i) => (
+                // Storage CDN 이미지라 next/image 대신 일반 img 사용
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={path}
+                  src={postImageUrl(path)}
+                  alt={`${post.title} 사진 ${i + 1}`}
+                  className="w-full rounded-2xl ring-1 ring-slate-900/[0.06]"
+                />
+              ))}
+            </div>
+          )}
 
           {post.content && (
             <p className="mt-6 whitespace-pre-wrap text-[15px] leading-relaxed text-slate-700">
@@ -236,16 +281,38 @@ export default async function PostDetailPage({
                     key={c.id}
                     className="flex items-start gap-3 rounded-2xl border border-slate-900/[0.06] bg-white/70 px-4 py-3 shadow-sm backdrop-blur-xl"
                   >
-                    <Avatar
-                      name={name}
-                      url={c.profiles?.avatar_url ?? null}
-                      size="size-8"
-                    />
+                    {isFullMember ? (
+                      <Link
+                        href={`/clubs/${id}/members/${c.author_id}`}
+                        className="shrink-0"
+                      >
+                        <Avatar
+                          name={name}
+                          url={c.profiles?.avatar_url ?? null}
+                          size="size-8"
+                        />
+                      </Link>
+                    ) : (
+                      <Avatar
+                        name={name}
+                        url={c.profiles?.avatar_url ?? null}
+                        size="size-8"
+                      />
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold text-slate-700">
-                          {name}
-                        </span>
+                        {isFullMember ? (
+                          <Link
+                            href={`/clubs/${id}/members/${c.author_id}`}
+                            className="truncate text-sm font-semibold text-slate-700 transition-colors hover:text-[#4d7c0f]"
+                          >
+                            {name}
+                          </Link>
+                        ) : (
+                          <span className="truncate text-sm font-semibold text-slate-700">
+                            {name}
+                          </span>
+                        )}
                         <span className="shrink-0 text-xs text-slate-400">
                           {formatRelative(c.created_at)}
                         </span>

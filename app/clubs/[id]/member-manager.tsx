@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { AlertTriangle, Crown, Loader2, UserMinus, X } from "lucide-react";
 import {
@@ -76,31 +77,36 @@ export function MemberManager({
           return (
             <li
               key={m.user_id}
-              className="flex items-center gap-3 rounded-2xl border border-slate-900/[0.06] bg-white/70 px-3.5 py-2.5 shadow-sm backdrop-blur-xl"
+              className="flex items-center gap-3 rounded-2xl border border-slate-900/[0.06] bg-white/70 px-3.5 py-2.5 shadow-sm backdrop-blur-xl transition-colors hover:border-[#84cc16]/40"
             >
-              {m.avatar_url ? (
-                // 카카오 CDN 호스트가 유동적이라 next/image 대신 일반 img 사용
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={m.avatar_url}
-                  alt={m.name}
-                  referrerPolicy="no-referrer"
-                  className="size-9 shrink-0 rounded-full object-cover ring-1 ring-slate-900/10"
-                />
-              ) : (
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#84cc16]/15 text-sm font-bold text-[#4d7c0f]">
-                  {m.name.charAt(0)}
-                </span>
-              )}
-
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">
-                {m.name}
-                {isSelf && (
-                  <span className="ml-1.5 text-xs font-normal text-slate-400">
-                    (나)
+              <Link
+                href={`/clubs/${clubId}/members/${m.user_id}`}
+                className="flex min-w-0 flex-1 items-center gap-3"
+              >
+                {m.avatar_url ? (
+                  // 카카오 CDN 호스트가 유동적이라 next/image 대신 일반 img 사용
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={m.avatar_url}
+                    alt={m.name}
+                    referrerPolicy="no-referrer"
+                    className="size-9 shrink-0 rounded-full object-cover ring-1 ring-slate-900/10"
+                  />
+                ) : (
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#84cc16]/15 text-sm font-bold text-[#4d7c0f]">
+                    {m.name.charAt(0)}
                   </span>
                 )}
-              </span>
+
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700">
+                  {m.name}
+                  {isSelf && (
+                    <span className="ml-1.5 text-xs font-normal text-slate-400">
+                      (나)
+                    </span>
+                  )}
+                </span>
+              </Link>
 
               {/* 역할: 편집 가능하면 드롭다운, 아니면 뱃지 */}
               {canEditRole ? (

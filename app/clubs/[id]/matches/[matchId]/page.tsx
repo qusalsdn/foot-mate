@@ -27,12 +27,17 @@ function Roster({
   accent,
   withRank,
   muted,
+  clubId,
+  canLink,
 }: {
   title: string;
   rows: Attendance[];
   accent: string;
   withRank?: boolean;
   muted?: boolean;
+  clubId: string;
+  // 정회원 뷰어에게만 프로필로 링크 (게스트는 회원 조회 차단)
+  canLink?: boolean;
 }) {
   if (rows.length === 0) return null;
   return (
@@ -43,16 +48,29 @@ function Roster({
         <span className="text-slate-400">{rows.length}</span>
       </h3>
       <ul className="flex flex-wrap gap-2">
-        {rows.map((a, i) => (
-          <li
-            key={a.user_id}
-            className={`inline-flex items-center gap-2 rounded-full border border-slate-900/[0.06] py-1 pl-1 pr-3 shadow-sm backdrop-blur-xl ${muted ? "bg-white/40 opacity-60" : "bg-white/70"}`}
-          >
-            {withRank && <span className="ml-1 w-4 text-center text-xs font-bold tabular-nums text-slate-400">{i + 1}</span>}
-            <Avatar profile={a.profiles} />
-            <span className="text-sm font-medium text-slate-700">{a.profiles?.name ?? "축구인"}</span>
-          </li>
-        ))}
+        {rows.map((a, i) => {
+          const person = (
+            <>
+              <Avatar profile={a.profiles} />
+              <span className="text-sm font-medium text-slate-700">{a.profiles?.name ?? "축구인"}</span>
+            </>
+          );
+          return (
+            <li
+              key={a.user_id}
+              className={`inline-flex items-center gap-2 rounded-full border border-slate-900/[0.06] py-1 pl-1 pr-3 shadow-sm backdrop-blur-xl transition-colors ${muted ? "bg-white/40 opacity-60" : "bg-white/70"} ${canLink ? "hover:border-[#84cc16]/40" : ""}`}
+            >
+              {withRank && <span className="ml-1 w-4 text-center text-xs font-bold tabular-nums text-slate-400">{i + 1}</span>}
+              {canLink ? (
+                <Link href={`/clubs/${clubId}/members/${a.user_id}`} className="inline-flex items-center gap-2">
+                  {person}
+                </Link>
+              ) : (
+                person
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
@@ -512,11 +530,11 @@ export default async function MatchDetailPage({
             <p className="py-4 text-center text-sm text-slate-400">아직 참석 응답이 없어요.</p>
           ) : (
             <>
-              <Roster title="참석" rows={attending} accent="bg-[#84cc16]" />
-              <Roster title="대기" rows={waitlist} accent="bg-amber-400" withRank />
-              <Roster title="미정" rows={maybeList} accent="bg-slate-300" />
-              <Roster title="불참" rows={absentList} accent="bg-red-400" />
-              <Roster title="미투표" rows={notVoted} accent="border border-dashed border-slate-400 bg-transparent" muted />
+              <Roster title="참석" rows={attending} accent="bg-[#84cc16]" clubId={id} canLink={isFullMember} />
+              <Roster title="대기" rows={waitlist} accent="bg-amber-400" withRank clubId={id} canLink={isFullMember} />
+              <Roster title="미정" rows={maybeList} accent="bg-slate-300" clubId={id} canLink={isFullMember} />
+              <Roster title="불참" rows={absentList} accent="bg-red-400" clubId={id} canLink={isFullMember} />
+              <Roster title="미투표" rows={notVoted} accent="border border-dashed border-slate-400 bg-transparent" muted clubId={id} canLink={isFullMember} />
             </>
           )}
         </section>

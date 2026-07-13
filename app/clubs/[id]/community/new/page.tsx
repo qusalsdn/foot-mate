@@ -36,8 +36,10 @@ export default async function NewPostPage({
   if (membership?.status !== "active") redirect(`/clubs/${id}/community`);
   // 게스트는 글 작성 불가 — 조회·댓글만 (RLS `post write`=is_full_member 와 일치)
   if (membership.role === "guest") redirect(`/clubs/${id}/community`);
-  // 공지는 운영진(회장·총무·감독·코치)만 — RLS `post write` 와 동일 기준
-  const canPostNotice = MANAGER_ROLES.has(membership.role);
+  // 쓸 수 있는 카테고리: 공지는 운영진(회장·총무·감독·코치)만, 나머지는 자유. 사진은 어느 글에나 첨부.
+  const availableCategories = MANAGER_ROLES.has(membership.role)
+    ? (["notice", "free"] as const)
+    : (["free"] as const);
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#f6f8f4] text-slate-900">
@@ -72,7 +74,11 @@ export default async function NewPostPage({
         </div>
 
         <div className="rounded-3xl border border-slate-900/[0.06] bg-white/80 p-6 shadow-sm backdrop-blur-xl sm:p-8">
-          <PostForm clubId={id} canPostNotice={canPostNotice} />
+          <PostForm
+            clubId={id}
+            userId={user.id}
+            availableCategories={[...availableCategories]}
+          />
         </div>
       </div>
     </div>
