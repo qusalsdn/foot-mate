@@ -6,17 +6,18 @@ import { formatRelative } from "@/lib/date";
 import {
   postCategoryLabel,
   postCategoryMeta,
+  postImageUrl,
   POST_CATEGORY_FILTERS,
+  PHOTOS_FILTER,
 } from "@/lib/constants/community";
 import { PageBackBar } from "@/components/page-back-bar";
-
-const MANAGER_ROLES = new Set(["president", "treasurer", "manager", "coach"]);
 
 type PostRow = {
   id: string;
   category: string;
   title: string;
   content: string | null;
+  images: string[] | null;
   created_at: string;
   author_id: string;
   profiles: { name: string | null; avatar_url: string | null } | null;
@@ -33,12 +34,14 @@ function PostCard({
 }) {
   const meta = postCategoryMeta(p.category);
   const name = p.profiles?.name ?? "축구인";
+  const images = p.images ?? [];
+  const thumb = images.length > 0 ? images[0] : null;
   return (
     <li>
       <Link href={`/clubs/${clubId}/community/${p.id}`} className="group block">
         <div className="relative flex flex-col gap-2.5 overflow-hidden rounded-2xl border border-slate-900/[0.06] bg-white/80 p-4 shadow-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-[#84cc16]/40 hover:shadow-lg hover:shadow-[#84cc16]/10 sm:p-5">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${meta.badge}`}
@@ -56,6 +59,22 @@ function PostCard({
                 </p>
               )}
             </div>
+            {thumb && (
+              <div className="relative size-16 shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-900/10 sm:size-20">
+                {/* Storage CDN 이미지라 next/image 대신 일반 img 사용 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={postImageUrl(thumb)}
+                  alt=""
+                  className="size-full object-cover"
+                />
+                {images.length > 1 && (
+                  <span className="absolute bottom-1 right-1 rounded-md bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    +{images.length - 1}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
@@ -109,16 +128,21 @@ export default async function CommunityPage({
   // 게스트는 조회·댓글만 — 글 작성은 정회원만 (RLS `post write`=is_full_member 와 일치)
   const canWritePost = membership.role !== "guest";
 
-  // 필터: URL 임의값 차단 — 유효 카테고리만 신뢰 (find 로 리터럴 유니온 추론, 캐스팅 불필요)
-  const activeFilter =
+  // 필터: URL 임의값 차단 — 유효 카테고리 + "사진"(이미지 보유)만 신뢰.
+  const activeCategory =
     POST_CATEGORY_FILTERS.find((c) => c === categoryParam) ?? null;
+  const isPhotos = categoryParam === PHOTOS_FILTER;
+  const activeFilter = isPhotos ? PHOTOS_FILTER : activeCategory; // 탭 하이라이트용
 
   let query = supabase
     .from("posts")
-    .select("id, category, title, content, created_at, author_id, profiles(name, avatar_url)")
+    .select("id, category, title, content, images, created_at, author_id, profiles(name, avatar_url)")
     .eq("club_id", id)
     .order("created_at", { ascending: false });
-  if (activeFilter) query = query.eq("category", activeFilter);
+  if (activeCategory) query = query.eq("category", activeCategory);
+  // "사진" 필터: 이미지가 하나라도 있는 글만. 빈 배열은 postgrest 에서 '{}' 로 직렬화돼
+  // images <> '{}' 와 동치가 된다(타입도 컬럼 그대로 string[]).
+  else if (isPhotos) query = query.neq("images", []);
 
   const { data: postData } = await query;
   const posts = postData ?? [];
@@ -142,6 +166,7 @@ export default async function CommunityPage({
       key: c as string | null,
       label: postCategoryLabel(c),
     })),
+    { key: PHOTOS_FILTER as string | null, label: "사진" },
   ];
 
   return (

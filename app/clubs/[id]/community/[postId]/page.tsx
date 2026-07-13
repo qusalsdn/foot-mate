@@ -4,7 +4,11 @@ import { notFound, redirect } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatKst, formatRelative } from "@/lib/date";
-import { postCategoryLabel, postCategoryMeta } from "@/lib/constants/community";
+import {
+  postCategoryLabel,
+  postCategoryMeta,
+  postImageUrl,
+} from "@/lib/constants/community";
 import { PageBackBar } from "@/components/page-back-bar";
 import { CommentForm } from "./comment-form";
 import { PostMenu, CommentDeleteButton } from "./post-menu";
@@ -120,12 +124,13 @@ export default async function PostDetailPage({
 
   const { data: postData } = await supabase
     .from("posts")
-    .select("id, category, title, content, created_at, author_id, profiles(name, avatar_url)")
+    .select("id, category, title, content, images, created_at, author_id, profiles(name, avatar_url)")
     .eq("id", postId)
     .eq("club_id", id)
     .maybeSingle();
   if (!postData) notFound();
   const post = postData;
+  const images = post.images ?? [];
 
   const { data: commentData } = await supabase
     .from("comments")
@@ -233,6 +238,21 @@ export default async function PostDetailPage({
               </p>
             </div>
           </AuthorLink>
+
+          {images.length > 0 && (
+            <div className="mt-6 grid gap-3">
+              {images.map((path, i) => (
+                // Storage CDN 이미지라 next/image 대신 일반 img 사용
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={path}
+                  src={postImageUrl(path)}
+                  alt={`${post.title} 사진 ${i + 1}`}
+                  className="w-full rounded-2xl ring-1 ring-slate-900/[0.06]"
+                />
+              ))}
+            </div>
+          )}
 
           {post.content && (
             <p className="mt-6 whitespace-pre-wrap text-[15px] leading-relaxed text-slate-700">

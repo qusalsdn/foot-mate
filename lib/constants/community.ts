@@ -47,3 +47,22 @@ export function postCategoryMeta(category: string): CategoryMeta {
 
 /** 목록 필터 탭 순서 (전체는 페이지에서 별도 처리). */
 export const POST_CATEGORY_FILTERS = ["notice", "free"] as const;
+
+/**
+ * "사진" 필터: 카테고리가 아니라 '이미지가 있는 글'을 모아본다(images <> '{}').
+ * URL 파라미터 값이자 탭 하이라이트 키. 카테고리와 구분해 페이지에서 별도 처리한다.
+ */
+export const PHOTOS_FILTER = "photos";
+
+/** 갤러리 이미지 스토리지 버킷. */
+export const POST_IMAGE_BUCKET = "post-images";
+
+/**
+ * 갤러리 이미지 경로 → 공개 URL. posts.images 에는 버킷 내 경로만 저장하고,
+ * 공개 URL 은 여기서 조립한다(서버 컴포넌트에서 supabase 클라이언트 없이 렌더 가능).
+ * 공개 버킷이므로 URL 규칙이 고정: /storage/v1/object/public/<bucket>/<path>.
+ */
+export function postImageUrl(path: string): string {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  return `${base}/storage/v1/object/public/${POST_IMAGE_BUCKET}/${path}`;
+}

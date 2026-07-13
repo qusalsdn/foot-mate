@@ -29,7 +29,7 @@ export default async function EditPostPage({
 
   const { data: postData } = await supabase
     .from("posts")
-    .select("id, category, title, content, author_id")
+    .select("id, category, title, content, author_id, images")
     .eq("id", postId)
     .eq("club_id", id)
     .maybeSingle();
@@ -41,8 +41,10 @@ export default async function EditPostPage({
     post.author_id === user.id || CAN_MANAGE_ROLES.has(membership.role);
   if (!canEdit) redirect(`/clubs/${id}/community/${postId}`);
 
-  // 공지 카테고리는 운영진(회장·총무·감독·코치)만 선택 가능
-  const canPostNotice = MANAGER_ROLES.has(membership.role);
+  // 쓸 수 있는 카테고리: 공지는 운영진만, 나머지는 자유. 사진은 어느 글에나 첨부.
+  const availableCategories = MANAGER_ROLES.has(membership.role)
+    ? (["notice", "free"] as const)
+    : (["free"] as const);
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#f6f8f4] text-slate-900">
@@ -77,11 +79,13 @@ export default async function EditPostPage({
           <PostForm
             clubId={id}
             postId={postId}
-            canPostNotice={canPostNotice}
+            userId={user.id}
+            availableCategories={[...availableCategories]}
             initial={{
               category: post.category,
               title: post.title,
               content: post.content ?? "",
+              images: post.images ?? [],
             }}
           />
         </div>
