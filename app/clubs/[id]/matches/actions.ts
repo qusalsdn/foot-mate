@@ -17,6 +17,8 @@ function toRow(v: {
   type: MatchType;
   opponent?: string;
   locationName?: string;
+  locationLat?: number;
+  locationLng?: number;
   capacity?: number;
   fee: number;
 }) {
@@ -28,6 +30,8 @@ function toRow(v: {
     type: v.type,
     opponent: v.opponent || null,
     location_name: v.locationName || null,
+    location_lat: v.locationLat ?? null,
+    location_lng: v.locationLng ?? null,
     capacity: v.capacity ?? null,
     fee: v.fee,
   };

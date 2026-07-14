@@ -11,6 +11,7 @@ import { TeamEditor, TeamGroups, type TeamPlayer } from "./team-editor";
 import { MatchManage } from "./match-manage";
 import { MediaManager } from "./media-manager";
 import { MatchVideos } from "./match-videos";
+import { MatchMap } from "@/components/map/match-map";
 
 const MANAGER_ROLES = new Set(["president", "treasurer", "manager", "coach"]);
 
@@ -127,7 +128,7 @@ export default async function MatchDetailPage({
 
   const { data: match } = await supabase
     .from("matches")
-    .select("id, club_id, title, match_date, vote_deadline, type, opponent, location_name, capacity, fee, status, images, videos")
+    .select("id, club_id, title, match_date, vote_deadline, type, opponent, location_name, location_lat, location_lng, capacity, fee, status, images, videos")
     .eq("id", matchId)
     .single();
   // 라우트의 클럽과 매치의 클럽이 다르면 404 (URL 조작 방지)
@@ -391,6 +392,37 @@ export default async function MatchDetailPage({
               </div>
             )}
           </dl>
+
+          {/* 좌표가 있으면 지도 미리보기 + 카카오맵 외부 링크(SDK 없이도 동작) */}
+          {match.location_lat != null && match.location_lng != null && (
+            <div className="mt-4 grid gap-2">
+              <MatchMap
+                lat={match.location_lat}
+                lng={match.location_lng}
+                name={match.location_name ?? "경기 장소"}
+              />
+              <div className="flex gap-2">
+                <a
+                  href={`https://map.kakao.com/link/map/${encodeURIComponent(match.location_name ?? "경기 장소")},${match.location_lat},${match.location_lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-900/10 bg-white/70 px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-[#84cc16]/40 hover:text-[#4d7c0f]"
+                >
+                  <MapPin className="size-3.5" />
+                  카카오맵에서 열기
+                </a>
+                <a
+                  href={`https://map.kakao.com/link/to/${encodeURIComponent(match.location_name ?? "경기 장소")},${match.location_lat},${match.location_lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-900/10 bg-white/70 px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-[#84cc16]/40 hover:text-[#4d7c0f]"
+                >
+                  <MapPin className="size-3.5" />
+                  길찾기
+                </a>
+              </div>
+            </div>
+          )}
         </div>
 
         {isCanceled && (

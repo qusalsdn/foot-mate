@@ -18,6 +18,13 @@ const defaultInt = (max: number) =>
     z.number().int().min(0).max(max),
   );
 
+/** 빈 문자열/undefined → undefined, 그 외엔 실수로 강제 (위/경도 입력용) */
+const optionalCoord = (min: number, max: number) =>
+  z.preprocess(
+    (v) => (v === "" || v == null ? undefined : Number(v)),
+    z.number().min(min).max(max).optional(),
+  );
+
 /**
  * 매치 생성/수정 입력 스키마.
  * 클라이언트(RHF)와 서버(Server Action)에서 재사용. matchDate는 datetime-local 벽시계 문자열.
@@ -44,6 +51,9 @@ export const matchSchema = z
     type: z.enum(MATCH_TYPES),
     opponent: z.string().trim().max(30, "30자 이하로 입력해주세요").optional(),
     locationName: z.string().trim().max(60, "60자 이하로 입력해주세요").optional(),
+    // 카카오맵 장소 검색으로 채우는 좌표(선택). 이름만 자유 입력 시 비어 있다.
+    locationLat: optionalCoord(-90, 90),
+    locationLng: optionalCoord(-180, 180),
     // 정원: 비우면 무제한
     capacity: optionalInt(100),
     // 참가비(원)
@@ -64,6 +74,11 @@ export const matchSchema = z
       )
       .max(4)
       .default([]),
+  })
+  // 좌표는 위/경도가 함께 있거나 함께 없어야 한다(반쪽 좌표 차단).
+  .refine((v) => (v.locationLat == null) === (v.locationLng == null), {
+    message: "위치 좌표가 올바르지 않아요",
+    path: ["locationLat"],
   })
   // 마감은 경기 시각보다 앞서야 한다. 둘 다 같은 형식·KST 벽시계라 문자열 비교로 충분.
   .refine((v) => !v.voteDeadline || v.voteDeadline <= v.matchDate, {

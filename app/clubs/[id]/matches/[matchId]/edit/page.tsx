@@ -34,7 +34,7 @@ export default async function EditMatchPage({
     supabase
       .from("matches")
       .select(
-        "id, club_id, title, match_date, vote_deadline, type, opponent, location_name, capacity, fee",
+        "id, club_id, title, match_date, vote_deadline, type, opponent, location_name, location_lat, location_lng, capacity, fee",
       )
       .eq("id", matchId)
       .single(),
@@ -55,6 +55,8 @@ export default async function EditMatchPage({
     type: match.type,
     opponent: match.opponent ?? "",
     locationName: match.location_name ?? "",
+    locationLat: match.location_lat != null ? String(match.location_lat) : "",
+    locationLng: match.location_lng != null ? String(match.location_lng) : "",
     capacity: match.capacity != null ? String(match.capacity) : "",
     fee: match.fee ? String(match.fee) : "",
     // 친선전은 team 1 = 우리팀(자동)이라 폼에는 상대팀(team>1)만 싣는다.
