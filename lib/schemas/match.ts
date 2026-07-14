@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { MATCH_TYPES } from "@/lib/constants/matches";
+import {
+  MATCH_TYPES,
+  MAX_MATCH_IMAGES,
+  MAX_MATCH_VIDEOS,
+} from "@/lib/constants/matches";
 
 /** 빈 문자열/undefined → undefined, 그 외엔 숫자로 강제 (폼의 문자열 입력 대응) */
 const optionalInt = (max: number) =>
@@ -145,6 +149,32 @@ export const internalResultSchema = z.object({
     .default([]),
 });
 export type InternalResultInput = z.infer<typeof internalResultSchema>;
+
+/**
+ * 매치 사진·영상 입력 스키마 (운영진 전용, 상세 페이지의 미디어 관리 섹션).
+ * images = 버킷 내 경로 배열(순서 = 표시 순서).
+ * videos = 라벨 붙은 외부 링크 목록. 팀마다 "풀 영상 1개"·"쿼터별 여러 개"로 달라 배열로 담는다.
+ *   - label 은 선택(비면 캡션 없음), url 은 http(s) 링크 필수. url 빈 행은 서버에서 저장 전 걸러낸다.
+ * 매치 생성/수정 폼과 분리 — 사진·영상은 보통 경기가 끝난 뒤에 붙이기 때문.
+ */
+export const matchMediaSchema = z.object({
+  images: z.array(z.string().min(1)).max(MAX_MATCH_IMAGES).default([]),
+  videos: z
+    .array(
+      z.object({
+        label: z.string().trim().max(20, "라벨이 너무 길어요").default(""),
+        url: z
+          .string()
+          .trim()
+          .min(1, "링크를 입력해주세요")
+          .max(300, "링크가 너무 길어요")
+          .regex(/^https?:\/\/\S+$/, "http(s):// 로 시작하는 링크를 입력해주세요"),
+      }),
+    )
+    .max(MAX_MATCH_VIDEOS, "영상은 최대 " + MAX_MATCH_VIDEOS + "개까지 추가할 수 있어요")
+    .default([]),
+});
+export type MatchMediaInput = z.infer<typeof matchMediaSchema>;
 
 /**
  * 자체전 팀 편성 입력 스키마 (운영진 전용).
