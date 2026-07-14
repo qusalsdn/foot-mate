@@ -109,26 +109,7 @@ export default async function CommunityPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("id, name")
-    .eq("id", id)
-    .single();
-  if (!club) notFound();
-
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  // 소속 회원만 커뮤니티를 볼 수 있다 (RLS도 막지만 UX상 클럽 페이지로 되돌린다)
-  if (membership?.status !== "active") redirect(`/clubs/${id}`);
-  // 게스트는 조회·댓글만 — 글 작성은 정회원만 (RLS `post write`=is_full_member 와 일치)
-  const canWritePost = membership.role !== "guest";
-
-  // 필터: URL 임의값 차단 — 유효 카테고리 + "사진"(이미지 보유)만 신뢰.
+  // 필터: URL 임의값 차단 — 유효 카테고리 + "사진"(이미지 보유)만 신뢰. (DB 무관, 배치 전에 계산)
   const activeCategory =
     POST_CATEGORY_FILTERS.find((c) => c === categoryParam) ?? null;
   const isPhotos = categoryParam === PHOTOS_FILTER;
@@ -144,7 +125,17 @@ export default async function CommunityPage({
   // images <> '{}' 와 동치가 된다(타입도 컬럼 그대로 string[]).
   else if (isPhotos) query = query.neq("images", []);
 
-  const { data: postData } = await query;
+  // 클럽 · 멤버십(가드) · 글 목록은 서로 독립 → 병렬. 가드는 아래에서 순서대로.
+  const [{ data: club }, { data: membership }, { data: postData }] = await Promise.all([
+    supabase.from("clubs").select("id, name").eq("id", id).single(),
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+    query,
+  ]);
+  if (!club) notFound();
+  // 소속 회원만 커뮤니티를 볼 수 있다 (RLS도 막지만 UX상 클럽 페이지로 되돌린다)
+  if (membership?.status !== "active") redirect(`/clubs/${id}`);
+  // 게스트는 조회·댓글만 — 글 작성은 정회원만 (RLS `post write`=is_full_member 와 일치)
+  const canWritePost = membership.role !== "guest";
   const posts = postData ?? [];
 
   // 게시글별 댓글 수 집계

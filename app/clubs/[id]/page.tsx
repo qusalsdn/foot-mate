@@ -50,19 +50,12 @@ export default async function ClubDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("id, name, region, description, join_policy")
-    .eq("id", id)
-    .single();
+  // 서로 독립인 클럽 정보 · 내 멤버십을 한 번에.
+  const [{ data: club }, { data: membership }] = await Promise.all([
+    supabase.from("clubs").select("id, name, region, description, join_policy").eq("id", id).single(),
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+  ]);
   if (!club) notFound();
-
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   const isActiveMember = membership?.status === "active";
   const isPending = membership?.status === "pending";
@@ -75,37 +68,32 @@ export default async function ClubDetailPage({
   const isOpenJoin = club.join_policy === "open";
   const joinClubWithId = joinClub.bind(null, id);
 
-  // 정회원만 로스터 조회 가능 (RLS: is_full_member). 게스트·비회원은 빈 결과.
-  let roster: RosterRow[] = [];
-  if (isFullMember) {
-    const { data } = await supabase
-      .from("club_members")
-      .select("role, user_id, profiles(name, avatar_url)")
-      .eq("club_id", id)
-      .eq("status", "active");
-    roster = (data ?? []).sort(
-      (a, b) =>
-        (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9),
-    );
-  }
+  // 로스터(정회원만, RLS: is_full_member)와 가입 대기 목록(회장·총무만)은 서로 독립 → 병렬.
+  // 권한 없으면 쿼리를 태우지 않는다(null).
+  const [rosterRes, pendingRes] = await Promise.all([
+    isFullMember
+      ? supabase.from("club_members").select("role, user_id, profiles(name, avatar_url)").eq("club_id", id).eq("status", "active")
+      : null,
+    canManage
+      ? supabase
+          .from("club_members")
+          .select("user_id, role, joined_at, profiles(name, avatar_url)")
+          .eq("club_id", id)
+          .eq("status", "pending")
+          .order("joined_at", { ascending: true })
+      : null,
+  ]);
 
-  // 가입 신청 대기 목록 (회장·총무만). RLS: 정회원은 pending row 조회 가능.
-  let pendingMembers: PendingMember[] = [];
-  if (canManage) {
-    const { data } = await supabase
-      .from("club_members")
-      .select("user_id, role, joined_at, profiles(name, avatar_url)")
-      .eq("club_id", id)
-      .eq("status", "pending")
-      .order("joined_at", { ascending: true });
-    pendingMembers = (data ?? []).map((m) => ({
-      user_id: m.user_id,
-      role: m.role,
-      joined_at: m.joined_at,
-      name: m.profiles?.name ?? "축구인",
-      avatar_url: m.profiles?.avatar_url ?? null,
-    }));
-  }
+  const roster: RosterRow[] = (rosterRes?.data ?? []).sort(
+    (a, b) => (ROLE_ORDER[a.role] ?? 9) - (ROLE_ORDER[b.role] ?? 9),
+  );
+  const pendingMembers: PendingMember[] = (pendingRes?.data ?? []).map((m) => ({
+    user_id: m.user_id,
+    role: m.role,
+    joined_at: m.joined_at,
+    name: m.profiles?.name ?? "축구인",
+    avatar_url: m.profiles?.avatar_url ?? null,
+  }));
 
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#f6f8f4] text-slate-900">

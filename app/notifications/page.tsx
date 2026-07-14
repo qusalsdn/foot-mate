@@ -14,24 +14,21 @@ export default async function NotificationsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // 첫 페이지: PAGE_SIZE+1 개를 받아 "더 보기" 존재 여부(hasMore)를 판단한다.
-  const { data } = await supabase
-    .from("notifications")
-    .select("id, type, title, body, link, read_at, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(NOTIFICATIONS_PAGE_SIZE + 1);
+  // 첫 페이지(PAGE_SIZE+1 로 "더 보기" 판단) · 안읽음 카운트는 서로 독립 → 병렬.
+  const [{ data }, { count }] = await Promise.all([
+    supabase
+      .from("notifications")
+      .select("id, type, title, body, link, read_at, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(NOTIFICATIONS_PAGE_SIZE + 1),
+    // 안읽음 개수는 전체 기준(첫 페이지에 국한되지 않도록 count 쿼리로 정확히).
+    supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("read_at", null),
+  ]);
   const rows = data ?? [];
   const hasMore = rows.length > NOTIFICATIONS_PAGE_SIZE;
   const notis = rows.slice(0, NOTIFICATIONS_PAGE_SIZE);
-
-  // 안읽음 개수는 전체 기준(첫 페이지에 국한되지 않도록 count 쿼리로 정확히).
-  const { count } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .is("read_at", null);
   const unreadCount = count ?? 0;
 
   return (

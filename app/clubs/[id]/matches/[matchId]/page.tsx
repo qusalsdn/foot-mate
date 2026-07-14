@@ -114,23 +114,19 @@ export default async function MatchDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: club } = await supabase.from("clubs").select("id, name").eq("id", id).single();
+  // 서로 독립인 3개 조회를 한 번에 (클럽 · 내 멤버십 · 매치). 가드는 아래에서 순서대로.
+  const [{ data: club }, { data: membership }, { data: match }] = await Promise.all([
+    supabase.from("clubs").select("id, name").eq("id", id).single(),
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("matches")
+      .select("id, club_id, title, match_date, vote_deadline, type, opponent, location_name, location_lat, location_lng, capacity, fee, status, images, videos")
+      .eq("id", matchId)
+      .single(),
+  ]);
   if (!club) notFound();
-
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
   if (membership?.status !== "active") redirect(`/clubs/${id}`);
   const canManage = MANAGER_ROLES.has(membership.role);
-
-  const { data: match } = await supabase
-    .from("matches")
-    .select("id, club_id, title, match_date, vote_deadline, type, opponent, location_name, location_lat, location_lng, capacity, fee, status, images, videos")
-    .eq("id", matchId)
-    .single();
   // 라우트의 클럽과 매치의 클럽이 다르면 404 (URL 조작 방지)
   if (!match || match.club_id !== id) notFound();
 

@@ -203,19 +203,12 @@ export default async function FinancePage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("id, name")
-    .eq("id", id)
-    .single();
+  // 클럽 · 멤버십은 서로 독립 → 병렬. 가드는 아래에서 순서대로.
+  const [{ data: club }, { data: membership }] = await Promise.all([
+    supabase.from("clubs").select("id, name").eq("id", id).single(),
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+  ]);
   if (!club) notFound();
-
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   // 게스트·비활성 회원은 회비 차단 (회원 목록·통계와 동일 기준) → 클럽으로 되돌린다
   if (membership?.status !== "active" || membership.role === "guest") {

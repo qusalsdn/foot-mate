@@ -19,20 +19,12 @@ export default async function EditPostPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // 멤버십(가드) · 글은 서로 독립 → 병렬. 가드는 아래에서 순서대로.
+  const [{ data: membership }, { data: postData }] = await Promise.all([
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+    supabase.from("posts").select("id, category, title, content, author_id, images").eq("id", postId).eq("club_id", id).maybeSingle(),
+  ]);
   if (membership?.status !== "active") redirect(`/clubs/${id}/community`);
-
-  const { data: postData } = await supabase
-    .from("posts")
-    .select("id, category, title, content, author_id, images")
-    .eq("id", postId)
-    .eq("club_id", id)
-    .maybeSingle();
   if (!postData) notFound();
   const post = postData;
 

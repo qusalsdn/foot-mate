@@ -18,19 +18,12 @@ export default async function NewPostPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("id, name")
-    .eq("id", id)
-    .single();
+  // 클럽 · 멤버십은 서로 독립 → 병렬. 가드는 아래에서 순서대로.
+  const [{ data: club }, { data: membership }] = await Promise.all([
+    supabase.from("clubs").select("id, name").eq("id", id).single(),
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+  ]);
   if (!club) notFound();
-
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   // 소속 회원만 글을 쓸 수 있다 (RLS도 막지만 UX상 커뮤니티로 되돌린다)
   if (membership?.status !== "active") redirect(`/clubs/${id}/community`);
