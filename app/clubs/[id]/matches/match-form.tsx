@@ -20,6 +20,7 @@ import {
 import { matchSchema } from "@/lib/schemas/match";
 import { MATCH_TYPE_LABELS, MATCH_TYPES } from "@/lib/constants/matches";
 import { createMatch, updateMatch } from "./actions";
+import { LocationPicker } from "./location-picker";
 import {
   Form,
   FormControl,
@@ -47,6 +48,9 @@ export type MatchFormValues = {
   type: string;
   opponent: string;
   locationName: string;
+  // 카카오맵 장소 검색으로 채우는 좌표(문자열, "" = 미설정)
+  locationLat: string;
+  locationLng: string;
   capacity: string;
   fee: string;
   // 팀 정의(이름). 자체전 기본 2팀, 친선전은 선택, 리그는 없음.
@@ -60,6 +64,8 @@ const EMPTY: MatchFormValues = {
   type: "internal",
   opponent: "",
   locationName: "",
+  locationLat: "",
+  locationLng: "",
   capacity: "",
   fee: "",
   // 기본 유형이 자체전이라 2팀으로 시작
@@ -345,27 +351,39 @@ export function MatchForm({
           </div>
         )}
 
-        <FormField
-          control={form.control}
-          name="locationName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-1.5 text-slate-700">
-                <MapPin className="size-4 text-[#65a30d]" />
-                장소
-                <span className="text-xs font-normal text-slate-400">선택</span>
-              </FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="예: 잠실종합운동장 보조구장"
-                  className={inputClass}
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+        <FormItem>
+          <FormLabel className="flex items-center gap-1.5 text-slate-700">
+            <MapPin className="size-4 text-[#65a30d]" />
+            장소
+            <span className="text-xs font-normal text-slate-400">
+              선택 · 검색하면 지도에 표시돼요
+            </span>
+          </FormLabel>
+          <LocationPicker
+            value={{
+              name: form.watch("locationName"),
+              lat: form.watch("locationLat"),
+              lng: form.watch("locationLng"),
+            }}
+            onChange={(v) => {
+              // 세 값을 먼저 모두 세팅한 뒤 한 번에 검증한다. 각 setValue마다
+              // shouldValidate를 켜면 중간 단계(lat만 채워진 반쪽 상태)의 refine 에러가
+              // locationLat 슬롯에 심긴 뒤 뒤 필드 검증이 그걸 못 지워 stale 에러로 남는다.
+              form.setValue("locationName", v.name);
+              form.setValue("locationLat", v.lat);
+              form.setValue("locationLng", v.lng);
+              form.trigger(["locationName", "locationLat", "locationLng"]);
+            }}
+          />
+          {(form.formState.errors.locationName?.message ||
+            form.formState.errors.locationLat?.message) && (
+            <p className="flex items-center gap-1.5 text-xs text-red-600">
+              <AlertCircle className="size-3.5 shrink-0" />
+              {form.formState.errors.locationName?.message ??
+                form.formState.errors.locationLat?.message}
+            </p>
           )}
-        />
+        </FormItem>
 
         <div className="grid grid-cols-2 gap-4">
           <FormField
