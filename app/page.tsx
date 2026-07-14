@@ -78,14 +78,29 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase.from("profiles").select("name, avatar_url").eq("id", user.id).single();
+  // 둘러보기 쿼리 구성: 검색어·지역 필터는 params 기반이라 DB 조회와 무관 → 아래 배치에 함께 태운다.
+  let clubsQuery = supabase
+    .from("clubs")
+    .select("id, name, region, description")
+    .order("created_at", { ascending: false })
+    .limit(24);
+  // ilike 값은 URL 인코딩되어 안전하게 전달됨 (필터 구문 주입 걱정 없음)
+  if (q) clubsQuery = clubsQuery.ilike("name", `%${q}%`);
+  if (sido && gu) {
+    clubsQuery = clubsQuery.eq("region", formatRegion(sido, gu));
+  } else if (sido) {
+    // "서울"(구 미지정)과 "서울 …"(구 지정) 모두 포함
+    clubsQuery = clubsQuery.ilike("region", `${sido}%`);
+  }
 
-  // 내가 속한 클럽 (활성 회원)
-  const { data: memberships } = await supabase
-    .from("club_members")
-    .select("role, clubs(id, name, region, description)")
-    .eq("user_id", user.id)
-    .eq("status", "active");
+  // 서로 독립인 4개 조회를 한 번에: 프로필 · 내 클럽 · 지역칩용 전체 지역 · 둘러보기 목록.
+  const [{ data: profile }, { data: memberships }, { data: regionRows }, { data: allClubs }] = await Promise.all([
+    supabase.from("profiles").select("name, avatar_url").eq("id", user.id).single(),
+    // 내가 속한 클럽 (활성 회원)
+    supabase.from("club_members").select("role, clubs(id, name, region, description)").eq("user_id", user.id).eq("status", "active"),
+    supabase.from("clubs").select("region").not("region", "is", null),
+    clubsQuery,
+  ]);
 
   const myClubs = memberships ?? [];
   const myClubIds = new Set(myClubs.map((m) => m.clubs?.id));
@@ -129,8 +144,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     }
   }
 
-  // 지역 필터 칩: 전체 클럽(내 클럽 포함)의 지역을 시/도·구로 파싱해 노출
-  const { data: regionRows } = await supabase.from("clubs").select("region").not("region", "is", null);
+  // 지역 필터 칩: 전체 클럽(내 클럽 포함)의 지역을 시/도·구로 파싱해 노출 (regionRows는 위 배치에서 조회)
   const parsedRegions = ((regionRows ?? []) as { region: string | null }[])
     .map((r) => r.region?.trim())
     .filter((r): r is string => !!r)
@@ -139,22 +153,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const presentSido = Array.from(new Set(parsedRegions.map((r) => r.sido))).sort((a, b) => sidoOrder(a) - sidoOrder(b));
   // 선택된 시/도에 존재하는 구 (해당 시/도 정의 순서)
   const presentGu = sido ? districtsOf(sido).filter((d) => parsedRegions.some((r) => r.sido === sido && r.gu === d)) : [];
-
-  // 둘러보기: 검색어(이름) + 지역 필터. 없으면 최근 생성순.
-  let clubsQuery = supabase
-    .from("clubs")
-    .select("id, name, region, description")
-    .order("created_at", { ascending: false })
-    .limit(24);
-  // ilike 값은 URL 인코딩되어 안전하게 전달됨 (필터 구문 주입 걱정 없음)
-  if (q) clubsQuery = clubsQuery.ilike("name", `%${q}%`);
-  if (sido && gu) {
-    clubsQuery = clubsQuery.eq("region", formatRegion(sido, gu));
-  } else if (sido) {
-    // "서울"(구 미지정)과 "서울 …"(구 지정) 모두 포함
-    clubsQuery = clubsQuery.ilike("region", `${sido}%`);
-  }
-  const { data: allClubs } = await clubsQuery;
 
   // 검색·지역 필터가 걸리면 내 클럽도 포함(전체에서 검색), 기본 화면에서만 내 클럽 숨김
   const discover = ((allClubs ?? []) as Club[]).filter((c) => hasFilter || !myClubIds.has(c.id));

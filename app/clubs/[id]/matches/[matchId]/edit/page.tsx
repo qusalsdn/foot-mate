@@ -19,18 +19,9 @@ export default async function EditMatchPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-  // 회장·감독·코치만 수정 (RLS도 막지만 UX상 상세로 되돌린다)
-  if (membership?.status !== "active" || !MANAGER_ROLES.has(membership.role)) {
-    redirect(`/clubs/${id}/matches/${matchId}`);
-  }
-
-  const [{ data: match }, { data: teamDefs }] = await Promise.all([
+  // 멤버십(가드) · 매치 · 팀 정의는 서로 독립 → 병렬. 가드는 아래에서 순서대로.
+  const [{ data: membership }, { data: match }, { data: teamDefs }] = await Promise.all([
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
     supabase
       .from("matches")
       .select(
@@ -38,12 +29,12 @@ export default async function EditMatchPage({
       )
       .eq("id", matchId)
       .single(),
-    supabase
-      .from("match_team_defs")
-      .select("team, name")
-      .eq("match_id", matchId)
-      .order("team", { ascending: true }),
+    supabase.from("match_team_defs").select("team, name").eq("match_id", matchId).order("team", { ascending: true }),
   ]);
+  // 회장·감독·코치만 수정 (RLS도 막지만 UX상 상세로 되돌린다)
+  if (membership?.status !== "active" || !MANAGER_ROLES.has(membership.role)) {
+    redirect(`/clubs/${id}/matches/${matchId}`);
+  }
   if (!match || match.club_id !== id) notFound();
 
   const initial: MatchFormValues = {

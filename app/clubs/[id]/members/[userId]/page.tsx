@@ -27,56 +27,34 @@ export default async function MemberProfilePage({
 
   const isSelf = userId === user.id;
 
-  // 뷰어가 이 클럽 정회원인지 확인 (게스트·비회원은 회원 명단 비공개 규칙과 동일하게 차단)
-  const { data: myMembership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // 접근 가드용 멤버십 2개는 병렬로: 뷰어(정회원 여부) + 대상(이 클럽 활성 회원 여부).
+  const [{ data: myMembership }, { data: target }] = await Promise.all([
+    // 뷰어가 이 클럽 정회원인지 (게스트·비회원은 회원 명단 비공개 규칙과 동일하게 차단)
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+    // 대상 회원 (이 클럽 활성 회원이어야 함)
+    supabase.from("club_members").select("role, joined_at").eq("club_id", id).eq("user_id", userId).eq("status", "active").maybeSingle(),
+  ]);
   const iAmFullMember =
     myMembership?.status === "active" && myMembership.role !== "guest";
   if (!iAmFullMember) notFound();
-
-  // 대상 회원 (이 클럽 활성 회원이어야 함)
-  const { data: target } = await supabase
-    .from("club_members")
-    .select("role, joined_at")
-    .eq("club_id", id)
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .maybeSingle();
   if (!target) notFound();
 
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("name")
-    .eq("id", id)
-    .single();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("name, phone, avatar_url, created_at")
-    .eq("id", userId)
-    .single();
+  // 클럽명 · 프로필 · 활동 통계(골/도움) · 참석 매치 수는 서로 독립 → 병렬.
+  const [{ data: club }, { data: profile }, { data: statRows }, { count: attended }] = await Promise.all([
+    supabase.from("clubs").select("name").eq("id", id).single(),
+    supabase.from("profiles").select("name, phone, avatar_url, created_at").eq("id", userId).single(),
+    supabase.from("match_stats").select("goals, assists, matches!inner(club_id)").eq("user_id", userId).eq("matches.club_id", id),
+    supabase
+      .from("match_attendances")
+      .select("match_id, matches!inner(club_id)", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "attending")
+      .eq("matches.club_id", id),
+  ]);
 
   const name = profile?.name ?? "축구인";
-
-  // 이 클럽에서의 활동 통계 (골·도움 합계, 참석 매치 수)
-  const { data: statRows } = await supabase
-    .from("match_stats")
-    .select("goals, assists, matches!inner(club_id)")
-    .eq("user_id", userId)
-    .eq("matches.club_id", id);
   const goals = (statRows ?? []).reduce((s, r) => s + (r.goals ?? 0), 0);
   const assists = (statRows ?? []).reduce((s, r) => s + (r.assists ?? 0), 0);
-
-  const { count: attended } = await supabase
-    .from("match_attendances")
-    .select("match_id, matches!inner(club_id)", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("status", "attending")
-    .eq("matches.club_id", id);
 
   const stats = [
     { label: "참석 매치", value: attended ?? 0, icon: Trophy },

@@ -107,31 +107,20 @@ export default async function MatchListPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("id, name")
-    .eq("id", id)
-    .single();
+  // 클럽 · 멤버십(가드) · 매치 목록은 서로 독립 → 병렬. 가드는 아래에서 순서대로.
+  const [{ data: club }, { data: membership }, { data: matchData }] = await Promise.all([
+    supabase.from("clubs").select("id, name").eq("id", id).single(),
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("matches")
+      .select("id, title, match_date, type, opponent, location_name, capacity, fee, status")
+      .eq("club_id", id)
+      .order("match_date", { ascending: false }),
+  ]);
   if (!club) notFound();
-
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
   // 소속 회원만 매치를 볼 수 있다 (RLS도 막지만 UX상 클럽 페이지로 되돌린다)
   if (membership?.status !== "active") redirect(`/clubs/${id}`);
   const canManage = MANAGER_ROLES.has(membership.role);
-
-  const { data: matchData } = await supabase
-    .from("matches")
-    .select(
-      "id, title, match_date, type, opponent, location_name, capacity, fee, status",
-    )
-    .eq("club_id", id)
-    .order("match_date", { ascending: false });
   const matches = matchData ?? [];
 
   // 참석 인원 집계 (확정/대기 분리) — 매치별 카운트

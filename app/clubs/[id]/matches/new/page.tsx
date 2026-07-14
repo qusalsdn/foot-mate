@@ -18,19 +18,12 @@ export default async function NewMatchPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: club } = await supabase
-    .from("clubs")
-    .select("id, name")
-    .eq("id", id)
-    .single();
+  // 클럽 · 멤버십은 서로 독립 → 병렬. 가드는 아래에서 순서대로.
+  const [{ data: club }, { data: membership }] = await Promise.all([
+    supabase.from("clubs").select("id, name").eq("id", id).single(),
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+  ]);
   if (!club) notFound();
-
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
 
   // 회장·감독·코치만 매치 생성 (RLS도 막지만 UX상 목록으로 되돌린다)
   if (membership?.status !== "active" || !MANAGER_ROLES.has(membership.role)) {

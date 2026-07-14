@@ -113,72 +113,60 @@ export default async function PostDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: membership } = await supabase
-    .from("club_members")
-    .select("role, status")
-    .eq("club_id", id)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  // 멤버십(가드) · 글 · 댓글은 서로 독립(모두 param 기준 필터) → 병렬. 가드는 아래에서 순서대로.
+  const [{ data: membership }, { data: postData }, { data: commentData }] = await Promise.all([
+    supabase.from("club_members").select("role, status").eq("club_id", id).eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("posts")
+      .select("id, category, title, content, images, created_at, author_id, profiles(name, avatar_url)")
+      .eq("id", postId)
+      .eq("club_id", id)
+      .maybeSingle(),
+    supabase
+      .from("comments")
+      // comment_mentions 가 comments↔profiles 를 정션으로 만들어 `profiles(...)` 임베드가
+      // 모호해진다("more than one relationship") → 작성자 FK(author_id)를 명시해 해소한다.
+      .select("id, content, created_at, author_id, profiles!author_id(name, avatar_url)")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true }),
+  ]);
   if (membership?.status !== "active") redirect(`/clubs/${id}`);
   const canManage = CAN_MANAGE_ROLES.has(membership.role);
-
-  const { data: postData } = await supabase
-    .from("posts")
-    .select("id, category, title, content, images, created_at, author_id, profiles(name, avatar_url)")
-    .eq("id", postId)
-    .eq("club_id", id)
-    .maybeSingle();
   if (!postData) notFound();
   const post = postData;
   const images = post.images ?? [];
-
-  const { data: commentData } = await supabase
-    .from("comments")
-    // comment_mentions 가 comments↔profiles 를 정션으로 만들어 `profiles(...)` 임베드가
-    // 모호해진다("more than one relationship") → 작성자 FK(author_id)를 명시해 해소한다.
-    .select("id, content, created_at, author_id, profiles!author_id(name, avatar_url)")
-    .eq("post_id", postId)
-    .order("created_at", { ascending: true });
   const comments = commentData ?? [];
 
   // 멘션 후보(@자동완성): 활성 회원. 로스터는 정회원만 조회 가능(RLS is_full_member)이라
   // 게스트에게는 빈 목록 → 멘션 없이 평범한 입력창이 된다(게스트 회원목록 차단 규칙 유지).
   const isFullMember = membership.role !== "guest";
-  let mentionCandidates: {
-    userId: string;
-    name: string;
-    avatarUrl: string | null;
-  }[] = [];
-  if (isFullMember) {
-    const { data: memberData } = await supabase
-      .from("club_members")
-      .select("user_id, profiles(name, avatar_url)")
-      .eq("club_id", id)
-      .eq("status", "active");
-    mentionCandidates = (memberData ?? [])
-      .filter((m) => m.user_id !== user.id) // 본인 제외
-      .map((m) => ({
-        userId: m.user_id,
-        name: m.profiles?.name ?? "축구인",
-        avatarUrl: m.profiles?.avatar_url ?? null,
-      }));
-  }
+  const commentIds = comments.map((c) => c.id);
+  // 멘션 후보 · 댓글별 멘션 이름은 서로 독립 → 병렬. 권한/데이터 없으면 null 스킵.
+  const [memberRes, mentionRes] = await Promise.all([
+    isFullMember
+      ? supabase.from("club_members").select("user_id, profiles(name, avatar_url)").eq("club_id", id).eq("status", "active")
+      : null,
+    commentIds.length > 0
+      ? supabase.from("comment_mentions").select("comment_id, profiles(name)").in("comment_id", commentIds)
+      : null,
+  ]);
+
+  const mentionCandidates = (memberRes?.data ?? [])
+    .filter((m) => m.user_id !== user.id) // 본인 제외
+    .map((m) => ({
+      userId: m.user_id,
+      name: m.profiles?.name ?? "축구인",
+      avatarUrl: m.profiles?.avatar_url ?? null,
+    }));
 
   // 표시용 멘션 이름 맵: 댓글별 실제 멘션 대상 이름(검증된 대상만 하이라이트).
   const mentionNames = new Map<string, string[]>();
-  const commentIds = comments.map((c) => c.id);
-  if (commentIds.length > 0) {
-    const { data: mentionData } = await supabase
-      .from("comment_mentions")
-      .select("comment_id, profiles(name)")
-      .in("comment_id", commentIds);
-    for (const row of mentionData ?? []) {
-      const nm = row.profiles?.name;
-      if (!nm) continue;
-      const arr = mentionNames.get(row.comment_id) ?? [];
-      arr.push(nm);
-      mentionNames.set(row.comment_id, arr);
-    }
+  for (const row of mentionRes?.data ?? []) {
+    const nm = row.profiles?.name;
+    if (!nm) continue;
+    const arr = mentionNames.get(row.comment_id) ?? [];
+    arr.push(nm);
+    mentionNames.set(row.comment_id, arr);
   }
 
   const meta = postCategoryMeta(post.category);
