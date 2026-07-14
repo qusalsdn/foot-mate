@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "./profile-form";
 import { PageBackBar } from "@/components/page-back-bar";
 import { PushToggle } from "@/components/push/push-toggle";
+import { SignOutOthers } from "./sign-out-others";
 
 export default async function MyProfilePage() {
   const supabase = await createClient();
@@ -83,6 +84,12 @@ export default async function MyProfilePage() {
         <div className="mt-5">
           <h2 className="mb-3 px-1 text-sm font-bold text-slate-700">알림</h2>
           <PushToggle />
+        </div>
+
+        {/* 보안 */}
+        <div className="mt-5">
+          <h2 className="mb-3 px-1 text-sm font-bold text-slate-700">보안</h2>
+          <SignOutOthers />
         </div>
       </div>
     </div>
