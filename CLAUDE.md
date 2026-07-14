@@ -72,7 +72,7 @@
 
 - `lib/supabase/client.ts` → `createClient()` — **클라이언트 컴포넌트**(`"use client"`)용. 동기 함수.
 - `lib/supabase/server.ts` → `await createClient()` — **서버 컴포넌트 / Route Handler / Server Action**용. `cookies()`가 async라 **반드시 await**.
-- `lib/supabase/middleware.ts` → `updateSession()` — 루트 `proxy.ts`에서 호출. 매 요청마다 세션 토큰 갱신. `createServerClient` 직후 `getUser()` 호출이 토큰을 갱신하므로 **제거하지 말 것**.
+- `lib/supabase/middleware.ts` → `updateSession()` — 루트 `proxy.ts`에서 호출. 매 요청마다 세션 토큰 갱신. `createServerClient` 직후 `getUser()` 호출이 토큰을 갱신하므로 **제거하지 말 것**. ⚠️ **리다이렉트 시 갱신 쿠키를 반드시 복사**: `getUser()`가 토큰을 회전시키면 새 쿠키가 `supabaseResponse`에 담기는데, `NextResponse.redirect()`는 새 response라 이를 상속하지 않는다 → 그냥 반환하면 회전된 리프레시 토큰이 유실돼 브라우저가 소비된 옛 토큰을 물고 다음 갱신에 실패(로그아웃). 그래서 리다이렉트 분기는 `redirectTo` 헬퍼로 `supabaseResponse.cookies`를 복사해 반환한다.
 
 Next.js 16은 `middleware.ts` 대신 **`proxy.ts`** 규칙을 쓴다(함수명도 `proxy`). 보호 경로 리다이렉트 로직은 `updateSession` 안에 있다(공개 경로: `/login`, `/auth/*`).
 

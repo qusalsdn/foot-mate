@@ -45,18 +45,26 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname.startsWith("/api/push");
 
+  // getUser()가 토큰을 회전시켰다면 그 갱신 쿠키가 supabaseResponse에 담긴다.
+  // 리다이렉트는 새 response 객체라 쿠키를 자동 상속하지 않으므로, 여기서
+  // 명시적으로 복사해야 회전된 리프레시 토큰이 유실되지 않는다(유실 시 브라우저가
+  // 소비된 옛 토큰을 계속 들고 있다가 다음 갱신에 실패 → 로그아웃).
+  const redirectTo = (to: string) => {
+    const url = request.nextUrl.clone();
+    url.pathname = to;
+    const res = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((c) => res.cookies.set(c));
+    return res;
+  };
+
   // 미로그인 → 보호 경로 접근 시 로그인으로
   if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    return redirectTo("/login");
   }
 
   // 로그인 상태 → 로그인 페이지 접근 시 홈으로
   if (user && pathname.startsWith("/login")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    return redirectTo("/");
   }
 
   return supabaseResponse;
