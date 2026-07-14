@@ -471,6 +471,7 @@ export type Database = {
           created_by: string
           fee: number
           id: string
+          images: string[]
           location_lat: number | null
           location_lng: number | null
           location_name: string | null
@@ -479,6 +480,7 @@ export type Database = {
           status: Database["public"]["Enums"]["match_status"]
           title: string
           type: Database["public"]["Enums"]["match_type"]
+          videos: Json
           vote_deadline: string | null
         }
         Insert: {
@@ -488,6 +490,7 @@ export type Database = {
           created_by: string
           fee?: number
           id?: string
+          images?: string[]
           location_lat?: number | null
           location_lng?: number | null
           location_name?: string | null
@@ -496,6 +499,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["match_status"]
           title: string
           type?: Database["public"]["Enums"]["match_type"]
+          videos?: Json
           vote_deadline?: string | null
         }
         Update: {
@@ -505,6 +509,7 @@ export type Database = {
           created_by?: string
           fee?: number
           id?: string
+          images?: string[]
           location_lat?: number | null
           location_lng?: number | null
           location_name?: string | null
@@ -513,6 +518,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["match_status"]
           title?: string
           type?: Database["public"]["Enums"]["match_type"]
+          videos?: Json
           vote_deadline?: string | null
         }
         Relationships: [

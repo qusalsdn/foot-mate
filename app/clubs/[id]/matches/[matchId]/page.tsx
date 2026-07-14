@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Ban, CalendarDays, Clock, Hourglass, MapPin, Pencil, Settings2, Swords, Trophy, Users, Wallet } from "lucide-react";
+import { Ban, CalendarDays, Clock, Hourglass, ImageIcon, MapPin, Pencil, Settings2, Swords, Trophy, Users, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatKstDate, formatKstTime } from "@/lib/date";
-import { getMatchView, matchTypeLabel, TEAM_STYLES, teamLabel } from "@/lib/constants/matches";
+import { getMatchView, matchImageUrl, matchTypeLabel, parseMatchVideos, TEAM_STYLES, teamLabel } from "@/lib/constants/matches";
 import { PageBackBar } from "@/components/page-back-bar";
 import { AttendancePanel } from "./attendance-panel";
 import { ResultEditor, type EditablePlayer } from "./result-editor";
 import { TeamEditor, TeamGroups, type TeamPlayer } from "./team-editor";
 import { MatchManage } from "./match-manage";
+import { MediaManager } from "./media-manager";
+import { MatchVideos } from "./match-videos";
 
 const MANAGER_ROLES = new Set(["president", "treasurer", "manager", "coach"]);
 
@@ -125,7 +127,7 @@ export default async function MatchDetailPage({
 
   const { data: match } = await supabase
     .from("matches")
-    .select("id, club_id, title, match_date, vote_deadline, type, opponent, location_name, capacity, fee, status")
+    .select("id, club_id, title, match_date, vote_deadline, type, opponent, location_name, capacity, fee, status, images, videos")
     .eq("id", matchId)
     .single();
   // 라우트의 클럽과 매치의 클럽이 다르면 404 (URL 조작 방지)
@@ -218,6 +220,11 @@ export default async function MatchDetailPage({
 
   const hasResult = !!result;
   const isCanceled = match.status === "canceled";
+
+  // 사진·영상 (운영진이 붙임, 활성 회원 전원 열람)
+  const matchImages = match.images ?? [];
+  const matchVideos = parseMatchVideos(match.videos);
+  const hasMedia = matchImages.length > 0 || matchVideos.length > 0;
 
   // 결과 입력용 참석자(확정) — 기존 기록 프리필
   const statByUser = new Map(stats.map((s) => [s.user_id, s]));
@@ -512,6 +519,41 @@ export default async function MatchDetailPage({
           </section>
         )}
 
+        {/* 경기 사진·영상 (운영진이 붙임, 활성 회원 전원 열람) */}
+        {hasMedia && (
+          <section className="mt-6 overflow-hidden rounded-3xl border border-slate-900/[0.06] bg-white/80 p-6 shadow-sm backdrop-blur-xl">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-700">
+              <ImageIcon className="size-4 text-[#65a30d]" />
+              경기 사진·영상
+            </h2>
+
+            {matchVideos.length > 0 && <MatchVideos videos={matchVideos} />}
+
+            {matchImages.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {matchImages.map((path) => (
+                  <a
+                    key={path}
+                    href={matchImageUrl(path)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative aspect-square overflow-hidden rounded-xl ring-1 ring-slate-900/10"
+                  >
+                    {/* Storage CDN 이미지라 next/image 대신 일반 img 사용 */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={matchImageUrl(path)}
+                      alt="경기 사진"
+                      loading="lazy"
+                      className="size-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* 참석 투표 */}
         {!isCanceled && (
           <section className="mt-6">
@@ -591,6 +633,14 @@ export default async function MatchDetailPage({
                 defaultOur={result?.our_score ?? 0}
                 defaultOpponent={result?.opponent_score ?? 0}
                 defaultNote={result?.note ?? ""}
+              />
+            )}
+            {!isCanceled && (
+              <MediaManager
+                clubId={id}
+                matchId={matchId}
+                initialImages={matchImages}
+                initialVideos={matchVideos}
               />
             )}
             <MatchManage clubId={id} matchId={matchId} status={match.status} />

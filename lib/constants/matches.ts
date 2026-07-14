@@ -100,6 +100,68 @@ export function teamLabel(team: number): string {
   return `${team}팀`;
 }
 
+/**
+ * 매치 사진·영상 (matches.images / matches.video_url).
+ * 사진은 게시글(post-images)과 같은 모델 — 별도 버킷에 '경로'만 저장하고 공개 URL 은 렌더 시 조립.
+ * 영상은 자체 저장 대신 외부 링크(유튜브 등)만 저장하고 상세에서 임베드.
+ */
+export const MATCH_IMAGE_BUCKET = "match-images";
+export const MAX_MATCH_IMAGES = 20;
+
+/** 경로 → 공개 URL (공개 버킷 규칙 고정: /storage/v1/object/public/<bucket>/<path>). */
+export function matchImageUrl(path: string): string {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  return `${base}/storage/v1/object/public/${MATCH_IMAGE_BUCKET}/${path}`;
+}
+
+/**
+ * 유튜브 링크(watch·youtu.be·shorts·embed) → 임베드 URL. 인식 못 하면 null(그땐 링크만 노출).
+ * 영상 ID 는 11자 [A-Za-z0-9_-]. 자체 저장을 피하려는 결정상 유튜브만 임베드한다.
+ */
+export function youtubeEmbedUrl(url: string): string | null {
+  const m = url.match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/,
+  );
+  return m ? `https://www.youtube.com/embed/${m[1]}` : null;
+}
+
+/**
+ * 매치 영상 = 라벨 붙은 외부 링크(matches.videos jsonb 배열).
+ * 팀마다 방식이 달라(풀 영상 1개 vs 쿼터별 여러 개) 단일 컬럼 대신 목록으로 담는다.
+ * label 은 선택(비면 캡션 없음), 자유 입력이되 아래 프리셋을 추천한다.
+ */
+export type MatchVideo = { label: string; url: string };
+export const MAX_MATCH_VIDEOS = 12;
+
+/** 라벨 자동완성 추천값(datalist). 자유 입력이라 이 외 값도 허용. */
+export const MATCH_VIDEO_LABEL_PRESETS = [
+  "전체 경기",
+  "전반",
+  "후반",
+  "1쿼터",
+  "2쿼터",
+  "3쿼터",
+  "4쿼터",
+] as const;
+
+/**
+ * matches.videos(jsonb, Json 타입) → MatchVideo[] 정규화.
+ * DB/네트워크로 넘어온 느슨한 Json 을 방어적으로 파싱한다(비배열·잘못된 항목·빈 url 제거).
+ */
+export function parseMatchVideos(raw: unknown): MatchVideo[] {
+  if (!Array.isArray(raw)) return [];
+  const out: MatchVideo[] = [];
+  for (const item of raw) {
+    if (item && typeof item === "object" && "url" in item) {
+      const url = String((item as { url: unknown }).url ?? "").trim();
+      if (!url) continue;
+      const label = String((item as { label?: unknown }).label ?? "").trim();
+      out.push({ label, url });
+    }
+  }
+  return out;
+}
+
 /** 팀별 색: dot(점), badge(테두리+배경+텍스트), swatch(버튼 강조) */
 export const TEAM_STYLES: Record<
   number,

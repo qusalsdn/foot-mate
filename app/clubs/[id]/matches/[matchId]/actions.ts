@@ -3,12 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   internalResultSchema,
+  matchMediaSchema,
   resultSchema,
   teamsSchema,
 } from "@/lib/schemas/match";
-import type { AttendStatus, MatchStatus } from "@/lib/constants/matches";
+import {
+  MATCH_IMAGE_BUCKET,
+  type AttendStatus,
+  type MatchStatus,
+} from "@/lib/constants/matches";
 
 export type ActionResult = { error?: string };
 
@@ -227,6 +233,61 @@ export async function saveTeams(
   return {};
 }
 
+/**
+ * 매치 사진·영상 저장 (운영진). 사진은 경로 배열, 영상은 외부 링크.
+ * 쓰기 권한은 RLS(matches UPDATE = can_manage_match)가 강제 — 0건 업데이트되면 에러로 되돌린다.
+ * 참조가 끊긴 사진은 admin 클라이언트로 best-effort 정리(게시글 이미지와 동일 패턴).
+ */
+export async function saveMatchMedia(
+  clubId: string,
+  matchId: string,
+  values: unknown,
+): Promise<ActionResult> {
+  const parsed = matchMediaSchema.safeParse(values);
+  if (!parsed.success) return { error: "입력값을 확인해주세요" };
+  const { images, videos } = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // 정리 대상 판별용 기존 이미지. 실패해도 저장은 진행한다.
+  const { data: prev } = await supabase
+    .from("matches")
+    .select("images")
+    .eq("id", matchId)
+    .eq("club_id", clubId)
+    .maybeSingle();
+
+  const { data, error } = await supabase
+    .from("matches")
+    .update({ images, videos })
+    .eq("id", matchId)
+    .eq("club_id", clubId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    return { error: "저장하지 못했어요. 권한을 확인해주세요." };
+  }
+
+  // 이번 저장으로 참조가 끊긴 사진(기존 - 최종)을 스토리지에서 정리한다.
+  const kept = new Set(images);
+  const orphaned = (prev?.images ?? []).filter((p) => !kept.has(p));
+  if (orphaned.length > 0) {
+    try {
+      await createAdminClient().storage.from(MATCH_IMAGE_BUCKET).remove(orphaned);
+    } catch {
+      // best-effort — 고아 파일이 남을 뿐 데이터 일관성엔 영향 없다.
+    }
+  }
+
+  revalidateMatch(clubId, matchId);
+  return {};
+}
+
 /** 매치 상태 변경 (운영진): 모집마감/재개·취소. RLS(can_manage_match)가 권한 강제. */
 export async function setMatchStatus(
   clubId: string,
@@ -262,9 +323,24 @@ export async function deleteMatch(clubId: string, matchId: string) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { error } = await supabase.from("matches").delete().eq("id", matchId);
-  if (error) {
+  const { data, error } = await supabase
+    .from("matches")
+    .delete()
+    .eq("id", matchId)
+    .select("id, images")
+    .maybeSingle();
+  if (error || !data) {
     redirect(`/clubs/${clubId}/matches/${matchId}?error=delete`);
+  }
+
+  // 매치 사진 스토리지 정리(부수효과). 실패해도 무시 — 고아 파일이 남을 뿐.
+  const paths = data.images ?? [];
+  if (paths.length > 0) {
+    try {
+      await createAdminClient().storage.from(MATCH_IMAGE_BUCKET).remove(paths);
+    } catch {
+      // best-effort
+    }
   }
 
   revalidatePath(`/clubs/${clubId}/matches`);
