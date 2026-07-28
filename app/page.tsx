@@ -103,7 +103,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   ]);
 
   const myClubs = memberships ?? [];
-  const myClubIds = new Set(myClubs.map((m) => m.clubs?.id));
 
   // 다가오는 매치: 내가 속한 모든 클럽의 예정(모집중·마감) & 미래 경기, 가까운 순 4개
   const activeClubIds = myClubs.map((m) => m.clubs?.id).filter((v): v is string => !!v);
@@ -154,8 +153,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   // 선택된 시/도에 존재하는 구 (해당 시/도 정의 순서)
   const presentGu = sido ? districtsOf(sido).filter((d) => parsedRegions.some((r) => r.sido === sido && r.gu === d)) : [];
 
-  // 검색·지역 필터가 걸리면 내 클럽도 포함(전체에서 검색), 기본 화면에서만 내 클럽 숨김
-  const discover = ((allClubs ?? []) as Club[]).filter((c) => hasFilter || !myClubIds.has(c.id));
+  // 둘러보기는 내 클럽 포함 전체 노출 (내 클럽도 함께 보이도록)
+  const discover = (allClubs ?? []) as Club[];
 
   const displayName = (profile as { name?: string } | null)?.name ?? "축구인";
   const avatarUrl = (profile as { avatar_url?: string } | null)?.avatar_url;
@@ -443,7 +442,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
 
           {discover.length === 0 ? (
             <p className="rounded-2xl border border-slate-900/[0.06] bg-white/60 px-5 py-8 text-center text-sm text-slate-400 backdrop-blur-sm">
-              {hasFilter ? "조건에 맞는 클럽이 없어요." : "둘러볼 다른 클럽이 없어요."}
+              {hasFilter ? "조건에 맞는 클럽이 없어요." : "둘러볼 클럽이 없어요."}
             </p>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2">
