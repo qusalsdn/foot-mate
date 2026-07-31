@@ -9,7 +9,8 @@
     "lint": "eslint",
     "gen:icons": "node scripts/gen-icons.mjs",
     "gen:og": "node scripts/gen-og.mjs",
-    "gen:assets": "pnpm gen:icons && pnpm gen:og"
+    "gen:splash": "node scripts/gen-splash.mjs",
+    "gen:assets": "pnpm gen:icons && pnpm gen:og && pnpm gen:splash"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
