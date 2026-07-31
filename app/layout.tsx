@@ -19,6 +19,10 @@ export const metadata: Metadata = {
     startupImage: [...APPLE_STARTUP_IMAGES],
   },
   icons: { apple: "/apple-touch-icon.png" },
+  // Next 16은 appleWebApp.capable을 표준 이름(mobile-web-app-capable)으로만 내보낸다.
+  // iOS 16.4+는 manifest의 display로 standalone을 판정하지만, 그 이전 버전은 이 옛 태그가 있어야
+  // 홈 화면 아이콘이 standalone으로 뜨고(=스플래시 표시 조건) 아니면 그냥 Safari로 열린다.
+  other: { "apple-mobile-web-app-capable": "yes" },
   // OG/트위터 이미지는 app/opengraph-image.png · app/twitter-image.png 파일 규칙으로 자동 주입됨.
   openGraph: {
     type: "website",
